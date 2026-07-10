@@ -73,13 +73,19 @@ class MovimientoController
             return;
         }
 
-        $query = "SELECT m.*, t.nombres as tercero_nombre, i.nombre as item_nombre, b.name as branch_name, s.name as school_name, i.codigo as item_codigo
+        $query = "SELECT m.*, t.nombres as tercero_nombre, i.nombre as item_nombre, b.name as branch_name, s.name as school_name, i.codigo as item_codigo,
+                         mt.nombre as tipo_movimiento_nombre,
+                         mt_p.nombre as tipo_movimiento_padre_nombre,
+                         mt_gp.nombre as tipo_movimiento_abuelo_nombre
                   FROM presupuesto_movimientos m
                   JOIN terceros t ON m.tercero_id = t.id_tercero
                   JOIN presupuesto_asignacion a ON m.asignacion_id = a.id_asignacion
                   JOIN presupuesto_items i ON a.item_id = i.id_item
                   JOIN school_branches b ON a.branch_id = b.id
                   JOIN schools s ON b.school_id = s.id
+                  LEFT JOIN presupuesto_movimiento_tipos mt ON m.tipo_movimiento_id = mt.id_tipo_movimiento
+                  LEFT JOIN presupuesto_movimiento_tipos mt_p ON mt.padre_id = mt_p.id_tipo_movimiento
+                  LEFT JOIN presupuesto_movimiento_tipos mt_gp ON mt_p.padre_id = mt_gp.id_tipo_movimiento
                   WHERE m.pae_id = :pae_id";
 
         $params = [":pae_id" => $pae_id];
@@ -92,7 +98,12 @@ class MovimientoController
 
         $tipo = $_GET['tipo'] ?? null;
         if ($tipo) {
-            $query .= " AND UPPER(m.tipo_movimiento) = :tipo";
+            $query .= " AND (
+                UPPER(m.tipo_movimiento) = :tipo OR 
+                UPPER(mt.nombre) = :tipo OR 
+                UPPER(mt_p.nombre) = :tipo OR 
+                UPPER(mt_gp.nombre) = :tipo
+            ) COLLATE utf8mb4_unicode_ci";
             $params[":tipo"] = strtoupper(trim($tipo));
         }
 
@@ -168,20 +179,34 @@ class MovimientoController
 
         $data = $_POST; // Using $_POST because of the file upload
 
+        // Resolve type name and ID
+        $tipo_movimiento_id = !empty($data['tipo_movimiento_id']) ? intval($data['tipo_movimiento_id']) : null;
+        $tipo_movimiento = $data['tipo_movimiento'] ?? '';
+
+        if ($tipo_movimiento_id) {
+            $stmtTypeName = $this->conn->prepare("SELECT nombre FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :tipo_id");
+            $stmtTypeName->execute([":tipo_id" => $tipo_movimiento_id]);
+            $typeName = $stmtTypeName->fetchColumn();
+            if ($typeName) {
+                $tipo_movimiento = $typeName;
+            }
+        }
+
         try {
             $this->conn->beginTransaction();
 
             // 1. Insert Movement
             $query = "INSERT INTO presupuesto_movimientos 
-                      (pae_id, asignacion_id, tercero_id, tipo_movimiento, fecha, numero_documento, detalle, valor, soporte_url, usuario_id) 
-                      VALUES (:pae_id, :asignacion_id, :tercero_id, :tipo_movimiento, :fecha, :numero_documento, :detalle, :valor, :soporte_url, :usuario_id)";
+                      (pae_id, asignacion_id, tercero_id, tipo_movimiento, tipo_movimiento_id, fecha, numero_documento, detalle, valor, soporte_url, usuario_id) 
+                      VALUES (:pae_id, :asignacion_id, :tercero_id, :tipo_movimiento, :tipo_movimiento_id, :fecha, :numero_documento, :detalle, :valor, :soporte_url, :usuario_id)";
 
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ":pae_id" => $pae_id,
                 ":asignacion_id" => $data['asignacion_id'],
                 ":tercero_id" => $data['tercero_id'],
-                ":tipo_movimiento" => $data['tipo_movimiento'],
+                ":tipo_movimiento" => $tipo_movimiento,
+                ":tipo_movimiento_id" => $tipo_movimiento_id,
                 ":fecha" => $data['fecha'],
                 ":numero_documento" => $data['numero_documento'] ?? '',
                 ":detalle" => $data['detalle'] ?? '',
@@ -252,6 +277,19 @@ class MovimientoController
             }
         }
 
+        // Resolve type name and ID
+        $tipo_movimiento_id = !empty($data['tipo_movimiento_id']) ? intval($data['tipo_movimiento_id']) : null;
+        $tipo_movimiento = $data['tipo_movimiento'] ?? '';
+
+        if ($tipo_movimiento_id) {
+            $stmtTypeName = $this->conn->prepare("SELECT nombre FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :tipo_id");
+            $stmtTypeName->execute([":tipo_id" => $tipo_movimiento_id]);
+            $typeName = $stmtTypeName->fetchColumn();
+            if ($typeName) {
+                $tipo_movimiento = $typeName;
+            }
+        }
+
         try {
             $this->conn->beginTransaction();
 
@@ -261,7 +299,7 @@ class MovimientoController
 
             // 2. Update movement
             $query = "UPDATE presupuesto_movimientos SET 
-                      tercero_id = :tercero_id, tipo_movimiento = :tipo_movimiento, 
+                      tercero_id = :tercero_id, tipo_movimiento = :tipo_movimiento, tipo_movimiento_id = :tipo_movimiento_id,
                       fecha = :fecha, numero_documento = :numero_documento, 
                       detalle = :detalle, valor = :valor, soporte_url = :soporte_url
                       WHERE id_movimiento = :id AND pae_id = :pae_id";
@@ -271,7 +309,8 @@ class MovimientoController
                 ":id" => $id,
                 ":pae_id" => $pae_id,
                 ":tercero_id" => $data['tercero_id'],
-                ":tipo_movimiento" => $data['tipo_movimiento'],
+                ":tipo_movimiento" => $tipo_movimiento,
+                ":tipo_movimiento_id" => $tipo_movimiento_id,
                 ":fecha" => $data['fecha'],
                 ":numero_documento" => $data['numero_documento'] ?? '',
                 ":detalle" => $data['detalle'] ?? '',

@@ -163,11 +163,12 @@ const App = {
                     foundGroup = { id: 99, name: 'Financiero' };
                     const finNames = {
                         'fin-terceros': 'Terceros',
-                        'fin-presupuesto': 'Presupuesto',
-                        'fin-movimientos': 'Movimientos',
-                        'fin-traslados': 'Traslados',
-                        'fin-ajustes': 'Ajustes',
-                        'fin-movimiento-tipos': 'Tipos de Movimientos'
+                        'fin-presupuesto': 'Creación Presupuesto',
+                        'fin-movimientos': 'Registro Costos y Gastos',
+                        'fin-traslados': 'Modificaciones Contractuales',
+                        'fin-ajustes': 'Modificaciones Contractuales',
+                        'fin-modificaciones': 'Modificaciones Contractuales',
+                        'fin-movimiento-tipos': 'Definición Costos y Gastos'
                     };
                     foundModule = { name: finNames[route] };
                 } else if (route === 'repositorio') {
@@ -321,8 +322,9 @@ const App = {
                     'fin-terceros': 'fin_terceros',
                     'fin-presupuesto': 'fin_presupuesto',
                     'fin-movimientos': 'fin_movimientos',
-                    'fin-traslados': 'fin_traslados',
-                    'fin-ajustes': 'fin_ajustes',
+                    'fin-traslados': 'fin_modificaciones',
+                    'fin-ajustes': 'fin_modificaciones',
+                    'fin-modificaciones': 'fin_modificaciones',
                     'fin-movimiento-tipos': 'fin_movimiento_tipos',
                     'reports-pay': 'reports_payroll',
                     'reports-presupuesto': 'reports_presupuesto',
@@ -823,11 +825,10 @@ const App = {
 
         if (group.id == 99 || group.name === 'Financiero') {
             modulesToRender.push({ name: 'Terceros', route: 'fin-terceros', icon: 'fas fa-id-card', description: 'Proveedores y Clientes', virtual: true, color: 'primary' });
-            modulesToRender.push({ name: 'Presupuesto', route: 'fin-presupuesto', icon: 'fas fa-calculator', description: 'Planeación Financiera', virtual: true, color: 'warning' });
-            modulesToRender.push({ name: 'Ajustes', route: 'fin-ajustes', icon: 'fas fa-sliders-h', description: 'Adiciones y Reducciones', virtual: true, color: 'danger' });
-            modulesToRender.push({ name: 'Tipos de Movimientos', route: 'fin-movimiento-tipos', icon: 'fas fa-tags', description: 'Categorización de Egresos', virtual: true, color: 'dark' });
-            modulesToRender.push({ name: 'Movimientos', route: 'fin-movimientos', icon: 'fas fa-exchange-alt', description: 'Ingresos y Gastos', virtual: true, color: 'success' });
-            modulesToRender.push({ name: 'Traslados', route: 'fin-traslados', icon: 'fas fa-reply-all', description: 'Movimientos Internos', virtual: true, color: 'info' });
+            modulesToRender.push({ name: 'Creación Presupuesto', route: 'fin-presupuesto', icon: 'fas fa-calculator', description: 'Registro Oferta Económica', virtual: true, color: 'warning' });
+            modulesToRender.push({ name: 'Modificaciones Contractuales', route: 'fin-modificaciones', icon: 'fas fa-file-contract', description: 'Adiciones, Reducciones y Traslados Presupuestales', virtual: true, color: 'danger' });
+            modulesToRender.push({ name: 'Definición Costos y Gastos', route: 'fin-movimiento-tipos', icon: 'fas fa-tags', description: 'Categorización de Egresos', virtual: true, color: 'dark' });
+            modulesToRender.push({ name: 'Registro Costos y Gastos', route: 'fin-movimientos', icon: 'fas fa-exchange-alt', description: 'Registro de Movimientos de Costos y Gastos', virtual: true, color: 'success' });
         }
 
         if (group.id == 98 || group.name === 'Repositorio' || group.name === 'Entregables') {

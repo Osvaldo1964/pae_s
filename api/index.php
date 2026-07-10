@@ -680,6 +680,27 @@ if ($resource === 'auth') {
     } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE' && $action) {
         $controller->delete($action);
     }
+} elseif ($resource === 'modificaciones') {
+    $controller = new \Controllers\ModificacionController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($action === 'allocations') {
+            $controller->getAllocations();
+        } elseif ($action && is_numeric($action)) {
+            $controller->show($action);
+        } else {
+            $controller->index();
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($action && is_numeric($action)) {
+            $controller->update($action);
+        } else {
+            $controller->store();
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT' && $action) {
+        $controller->update($action);
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE' && $action) {
+        $controller->delete($action);
+    }
 } elseif ($resource === 'movimientos-tipos') {
     $controller = new \Controllers\MovimientoTipoController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {

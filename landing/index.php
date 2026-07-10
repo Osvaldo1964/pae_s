@@ -6,8 +6,18 @@ try {
     $db = \Config\Database::getInstance()->getConnection();
     $stmt = $db->query("SELECT id, name FROM pae_programs ORDER BY name ASC");
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Consultas para las estadísticas dinámicas
+    $stat_schools = $db->query("SELECT COUNT(*) FROM schools")->fetchColumn();
+    $stat_branches = $db->query("SELECT COUNT(*) FROM school_branches")->fetchColumn();
+    $stat_beneficiaries = $db->query("SELECT COUNT(*) FROM beneficiaries")->fetchColumn();
+    $stat_rations = $db->query("SELECT COUNT(*) FROM daily_consumptions")->fetchColumn();
 } catch (\Exception $e) {
     $programs = [];
+    $stat_schools = 0;
+    $stat_branches = 0;
+    $stat_beneficiaries = 0;
+    $stat_rations = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -99,7 +109,7 @@ try {
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link active" href="#inicio">Inicio</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#eventos">Eventos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#estadisticas">Impacto</a></li>
                     <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal"
                             data-bs-target="#pqrModal">PQR</a></li>
                     <!-- <li class="nav-item ms-3">
@@ -129,36 +139,64 @@ try {
     </section>
 
 
-    <!-- Eventos -->
-    <section id="eventos" class="py-5">
+    <!-- Estadísticas (Cifras del Programa) -->
+    <section id="estadisticas" class="py-5 bg-light">
         <div class="container">
-            <h2 class="text-center text-primary-custom mb-5">Próximos Eventos</h2>
+            <h2 class="text-center text-primary-custom mb-2 fw-bold">El Programa en Cifras</h2>
+            <p class="text-center text-muted mb-5">Transparencia e impacto en tiempo real de nuestra gestión nutricional</p>
             <div class="row g-4 justify-content-center">
-                <div class="col-md-4">
-                    <div class="card shadow-sm border-0 h-100 border-primary"
-                        style="box-shadow: 0 0 15px rgba(27,79,114,0.3) !important;">
-                        <img src="https://placehold.co/800x500/8E44AD/FFFFFF?text=Programa+Adulto+Mayor"
-                            class="card-img-top event-img" alt="Adulto Mayor">
-                        <div class="card-body d-flex flex-column">
-                            <span class="badge bg-danger mb-2" style="width: fit-content;">Convocatoria Especial</span>
-                            <h5>Viajes Recreativos - Adulto Mayor</h5>
-                            <p class="text-muted small mb-2">Cupos disponibles: 2,160</p>
-                            <p class="card-text" style="font-size: 0.9rem;">
-                                <strong>Requisitos mínimos:</strong><br>
-                                &bull; Mayor de 60 años.<br>
-                                &bull; Ciudadano colombiano o residente (≥ 10 años).<br>
-                                &bull; SISBEN IV (Grupos A, B o C).<br>
-                                <span class="text-danger" style="font-size: 0.8rem;">* La inscripción está sujeta a
-                                    revisión previa.</span>
-                            </p>
-                            <a href="landing/inscripcion_adulto_mayor.php"
-                                class="btn btn-warning mt-auto fw-bold text-dark"><i
-                                    class="fas fa-edit me-2"></i>Inscríbete Aquí</a>
+                <!-- Instituciones -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100 border-0 shadow-sm stat-card p-3">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-school fa-3x text-primary-custom"></i>
+                            </div>
+                            <h3 class="display-5 fw-bold text-dark mb-1" id="stat-schools"><?= number_format($stat_schools) ?></h3>
+                            <h6 class="text-muted text-uppercase small fw-bold">Instituciones</h6>
+                            <p class="text-muted small mb-0 mt-2">Centros educativos vinculados al programa.</p>
                         </div>
                     </div>
                 </div>
-
-
+                <!-- Sedes -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100 border-0 shadow-sm stat-card p-3" style="border-left-color: var(--primary-color) !important;">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-building fa-3x text-primary-custom"></i>
+                            </div>
+                            <h3 class="display-5 fw-bold text-dark mb-1" id="stat-branches"><?= number_format($stat_branches) ?></h3>
+                            <h6 class="text-muted text-uppercase small fw-bold">Sedes Atendidas</h6>
+                            <p class="text-muted small mb-0 mt-2">Puntos de entrega y comedores escolares activos.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Beneficiarios -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100 border-0 shadow-sm stat-card p-3" style="border-left-color: var(--accent-color) !important;">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-users fa-3x text-success"></i>
+                            </div>
+                            <h3 class="display-5 fw-bold text-dark mb-1" id="stat-beneficiaries"><?= number_format($stat_beneficiaries) ?></h3>
+                            <h6 class="text-muted text-uppercase small fw-bold">Beneficiarios</h6>
+                            <p class="text-muted small mb-0 mt-2">Estudiantes con cobertura de alimentación diaria.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Raciones -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="card h-100 border-0 shadow-sm stat-card p-3" style="border-left-color: var(--secondary-color) !important;">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-utensils fa-3x text-success"></i>
+                            </div>
+                            <h3 class="display-5 fw-bold text-dark mb-1" id="stat-rations"><?= number_format($stat_rations) ?></h3>
+                            <h6 class="text-muted text-uppercase small fw-bold">Raciones Entregadas</h6>
+                            <p class="text-muted small mb-0 mt-2">Complementos alimenticios servidos y controlados.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

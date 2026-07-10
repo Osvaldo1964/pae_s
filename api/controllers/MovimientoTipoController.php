@@ -107,13 +107,40 @@ class MovimientoTipoController
             return;
         }
 
+        $padre_id = !empty($data->padre_id) ? intval($data->padre_id) : null;
+
+        if ($padre_id) {
+            // Verify parent exists and check depth
+            $stmtParent = $this->conn->prepare("SELECT padre_id FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :padre_id AND pae_id = :pae_id");
+            $stmtParent->execute([":padre_id" => $padre_id, ":pae_id" => $pae_id]);
+            $parent = $stmtParent->fetch(PDO::FETCH_ASSOC);
+            if (!$parent) {
+                http_response_code(400);
+                echo json_encode(["message" => "El grupo superior seleccionado no existe."]);
+                return;
+            }
+
+            // Parent is level 2 if it has a parent
+            if ($parent['padre_id']) {
+                $stmtGrandparent = $this->conn->prepare("SELECT padre_id FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :gp_id");
+                $stmtGrandparent->execute([":gp_id" => $parent['padre_id']]);
+                $gp_padre_id = $stmtGrandparent->fetchColumn();
+                if ($gp_padre_id) {
+                    http_response_code(400);
+                    echo json_encode(["message" => "No se permite una jerarquía de más de 3 niveles."]);
+                    return;
+                }
+            }
+        }
+
         try {
-            $query = "INSERT INTO presupuesto_movimiento_tipos (pae_id, nombre, descripcion) VALUES (:pae_id, :nombre, :descripcion)";
+            $query = "INSERT INTO presupuesto_movimiento_tipos (pae_id, nombre, descripcion, padre_id) VALUES (:pae_id, :nombre, :descripcion, :padre_id)";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ":pae_id" => $pae_id,
                 ":nombre" => $nombre,
-                ":descripcion" => $data->descripcion ?? ''
+                ":descripcion" => $data->descripcion ?? '',
+                ":padre_id" => $padre_id
             ]);
 
             echo json_encode(["success" => true, "message" => "Tipo de movimiento registrado exitosamente."]);
@@ -172,8 +199,53 @@ class MovimientoTipoController
             return;
         }
 
+        $padre_id = !empty($data->padre_id) ? intval($data->padre_id) : null;
+
+        if ($padre_id) {
+            if ($padre_id == $id) {
+                http_response_code(400);
+                echo json_encode(["message" => "Un costo/gasto no puede ser su propio grupo superior."]);
+                return;
+            }
+
+            // Verify parent exists and check depth
+            $stmtParent = $this->conn->prepare("SELECT padre_id FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :padre_id AND pae_id = :pae_id");
+            $stmtParent->execute([":padre_id" => $padre_id, ":pae_id" => $pae_id]);
+            $parent = $stmtParent->fetch(PDO::FETCH_ASSOC);
+            if (!$parent) {
+                http_response_code(400);
+                echo json_encode(["message" => "El grupo superior seleccionado no existe."]);
+                return;
+            }
+
+            // Cycle detection:
+            $currParentId = $parent['padre_id'];
+            while ($currParentId) {
+                if ($currParentId == $id) {
+                    http_response_code(400);
+                    echo json_encode(["message" => "Bucle cíclico detectado: el grupo superior no puede ser un subgrupo del elemento actual."]);
+                    return;
+                }
+                $stmtGp = $this->conn->prepare("SELECT padre_id FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :p_id");
+                $stmtGp->execute([":p_id" => $currParentId]);
+                $currParentId = $stmtGp->fetchColumn();
+            }
+
+            // Validate parent level
+            if ($parent['padre_id']) {
+                $stmtGp = $this->conn->prepare("SELECT padre_id FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :gp_id");
+                $stmtGp->execute([":gp_id" => $parent['padre_id']]);
+                $gp_padre_id = $stmtGp->fetchColumn();
+                if ($gp_padre_id) {
+                    http_response_code(400);
+                    echo json_encode(["message" => "No se permite una jerarquía de más de 3 niveles."]);
+                    return;
+                }
+            }
+        }
+
         try {
-            // Get original name to update references (optional, but a nice touch: if they rename 'PAGO' to 'PAGO FACTURA', we could update existing movements too!)
+            // Get original name to update references
             $stmtOrig = $this->conn->prepare("SELECT nombre FROM presupuesto_movimiento_tipos WHERE id_tipo_movimiento = :id AND pae_id = :pae_id");
             $stmtOrig->execute([":id" => $id, ":pae_id" => $pae_id]);
             $originalName = $stmtOrig->fetchColumn();
@@ -181,13 +253,14 @@ class MovimientoTipoController
             $this->conn->beginTransaction();
 
             // Update type record
-            $query = "UPDATE presupuesto_movimiento_tipos SET nombre = :nombre, descripcion = :descripcion WHERE id_tipo_movimiento = :id AND pae_id = :pae_id";
+            $query = "UPDATE presupuesto_movimiento_tipos SET nombre = :nombre, descripcion = :descripcion, padre_id = :padre_id WHERE id_tipo_movimiento = :id AND pae_id = :pae_id";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ":id" => $id,
                 ":pae_id" => $pae_id,
                 ":nombre" => $nombre,
-                ":descripcion" => $data->descripcion ?? ''
+                ":descripcion" => $data->descripcion ?? '',
+                ":padre_id" => $padre_id
             ]);
 
             // If name changed, update historical entries so they are not broken!

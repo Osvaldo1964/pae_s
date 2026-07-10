@@ -22,7 +22,7 @@ window.PresupuestoView = {
 
             let itemsArray = Array.isArray(items) ? items : [];
             itemsArray.sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true, sensitivity: 'base' }));
-            
+
             // Calculate totals for parents based on children
             this.items = this.calculateSummaries(itemsArray);
             this.branches = Array.isArray(branches) ? branches : [];
@@ -80,8 +80,8 @@ window.PresupuestoView = {
             <div class="container-fluid py-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 class="text-primary-custom fw-bold mb-0">Planeación Presupuestal</h2>
-                        <p class="text-muted">Definición y seguimiento de rubros presupuestales</p>
+                        <h2 class="text-primary-custom fw-bold mb-0">Creación Oferta Económica</h2>
+                        <p class="text-muted">Registro Oferta Económica</p>
                     </div>
                     <div class="d-flex gap-2">
                         <div class="bg-white border rounded px-3 py-1 shadow-sm d-flex align-items-center">
