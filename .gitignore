@@ -1,0 +1,20 @@
+# System Files
+.DS_Store
+Thumbs.db
+*.log
+
+# Editor Directories
+.vscode/
+.idea/
+*.swp
+
+# Dependencies (Future Proofing)
+/vendor/
+/node_modules/
+
+# Local Config (Optional: Uncomment if you want to keep prod credentials out of git)
+# /api/config/Database.php
+# /api/utils/JWT.php
+
+# Temp
+tmp/
