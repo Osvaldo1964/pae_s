@@ -477,11 +477,11 @@ var PaeProgramsView = {
 
             if (pae.entity_logo_path) {
                 document.getElementById('entity-logo-current').textContent = `Actual: ${pae.entity_logo_path.split('/').pop()}`;
-                document.getElementById('entity-preview').innerHTML = `<img src="${pae.entity_logo_path}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                document.getElementById('entity-preview').innerHTML = `<img src="${Config.BASE_URL}${pae.entity_logo_path}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.parentElement.innerHTML='<span class=\'text-muted small\'>Sin logo</span>'">`;
             }
             if (pae.operator_logo_path) {
                 document.getElementById('operator-logo-current').textContent = `Actual: ${pae.operator_logo_path.split('/').pop()}`;
-                document.getElementById('operator-preview').innerHTML = `<img src="${pae.operator_logo_path}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                document.getElementById('operator-preview').innerHTML = `<img src="${Config.BASE_URL}${pae.operator_logo_path}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.parentElement.innerHTML='<span class=\'text-muted small\'>Sin logo</span>'">`;
             }
 
             // Pre-select services
