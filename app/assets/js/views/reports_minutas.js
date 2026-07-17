@@ -140,15 +140,19 @@ window.ReportsMinutasView = {
             Helper.loading(false);
 
             if (res.success) {
-                const filteredDays = this.filterDaysByDate(res.data, startDate, endDate, cycleId);
                 const school = this.schools.find(s => s.id == schoolId);
                 const branch = this.branches.find(b => b.id == branchId);
                 const cycle = this.cycles.find(c => c.id == cycleId);
 
+                // Deducir automáticamente si el ciclo incluye fines de semana en base a los días reales versus hábiles en su rango
+                const includeWeekends = this.detectIncludeWeekends(cycle.start_date, cycle.end_date, res.data);
+
+                const filteredDays = this.filterDaysByDate(res.data, startDate, endDate, cycleId, includeWeekends);
+
                 if (format === 'print') {
-                    this.printMinuta(filteredDays, school, branch, cycle, startDate, endDate);
+                    this.printMinuta(filteredDays, school, branch, cycle, startDate, endDate, includeWeekends);
                 } else {
-                    this.excelMinuta(filteredDays, school, branch, cycle, startDate, endDate);
+                    this.excelMinuta(filteredDays, school, branch, cycle, startDate, endDate, includeWeekends);
                 }
             } else {
                 Helper.alert('error', 'No se pudo obtener la información del ciclo');
@@ -160,11 +164,66 @@ window.ReportsMinutasView = {
         }
     },
 
+    detectIncludeWeekends(startDateStr, endDateStr, days) {
+        // Si hay algún día con "SÁBADO", "SABADO" o "DOMINGO" en el nombre, incluye fines de semana
+        if (Array.isArray(days)) {
+            const hasWeekendName = days.some(d => {
+                const name = (d.name || '').toUpperCase();
+                return name.includes('SÁBADO') || name.includes('SABADO') || name.includes('DOMINGO');
+            });
+            if (hasWeekendName) return true;
+        }
+
+        const totalDays = Array.isArray(days) ? days.length : 0;
+        let start = new Date(startDateStr + 'T00:00:00');
+        let end = new Date(endDateStr + 'T00:00:00');
+        
+        let businessDays = 0;
+        let currentDate = new Date(start);
+        while (currentDate <= end) {
+            const day = currentDate.getDay();
+            if (day !== 0 && day !== 6) {
+                businessDays++;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        return totalDays > businessDays;
+    },
+
     /**
      * Calcula la fecha real para el N-ésimo día de alimentación (saltando fines de semana)
+     * O si viene con formato de fecha en el nombre del menú, parsea esa fecha.
      */
-    getFeedingDate(startDateStr, dayNumber) {
+    getFeedingDate(startDateStr, dayNumber, dayName = '', includeWeekends = false) {
+        if (dayName) {
+            const match = dayName.match(/(\d{2})\/(\d{2})$/);
+            if (match) {
+                const day = match[1];
+                const month = match[2];
+                const startYear = parseInt(startDateStr.split('-')[0]);
+                const startMonth = parseInt(startDateStr.split('-')[1]);
+                
+                let year = startYear;
+                if (parseInt(month) < startMonth && startMonth === 12) {
+                    year = startYear + 1;
+                } else if (parseInt(month) > startMonth && startMonth === 1 && parseInt(month) === 12) {
+                    year = startYear - 1;
+                }
+                
+                const parsedDate = new Date(`${year}-${month}-${day}T00:00:00`);
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            }
+        }
+
         let date = new Date(startDateStr + 'T00:00:00');
+        if (includeWeekends) {
+            date.setDate(date.getDate() + (dayNumber - 1));
+            return date;
+        }
+
         // Asegurar que empezamos un día hábil
         while (date.getDay() === 0 || date.getDay() === 6) {
             date.setDate(date.getDate() + 1);
@@ -180,24 +239,24 @@ window.ReportsMinutasView = {
         return date;
     },
 
-    filterDaysByDate(allDays, start, end, cycleId) {
+    filterDaysByDate(allDays, start, end, cycleId, includeWeekends = false) {
         const cycle = this.cycles.find(c => c.id == cycleId);
         const targetStart = new Date(start + 'T00:00:00');
         const targetEnd = new Date(end + 'T00:00:00');
 
         return allDays.filter(d => {
-            const dayDate = this.getFeedingDate(cycle.start_date, d.day);
+            const dayDate = this.getFeedingDate(cycle.start_date, d.day, d.name, includeWeekends);
             return dayDate >= targetStart && dayDate <= targetEnd;
         });
     },
 
-    printMinuta(days, school, branch, cycle, start, end) {
+    printMinuta(days, school, branch, cycle, start, end, includeWeekends = false) {
         const printWindow = window.open('', '_blank');
 
         let daysHtml = '';
 
         days.forEach(d => {
-            const dayDate = this.getFeedingDate(cycle.start_date, d.day);
+            const dayDate = this.getFeedingDate(cycle.start_date, d.day, d.name, includeWeekends);
 
             const dayName = dayDate.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase();
             const dayNum = dayDate.getDate();
@@ -293,13 +352,14 @@ window.ReportsMinutasView = {
         printWindow.document.close();
     },
 
-    excelMinuta(days, school, branch, cycle, start, end) {
+    excelMinuta(days, school, branch, cycle, start, end, includeWeekends = false) {
+        const templateName = cycle.template_name || branch.name;
         let html = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
             <head><meta charset="UTF-8"></head>
             <body>
                 <table border="1">
-                    <tr><th colspan="3" style="font-size:18pt; background:#198754; color:white;">MINUTA PATRÓN - ${branch.name}</th></tr>
+                    <tr><th colspan="3" style="font-size:18pt; background:#198754; color:white;">MINUTA PATRÓN - ${templateName}</th></tr>
                     <tr><td colspan="3"><b>CENTRO:</b> ${school.name}</td></tr>
                     <tr><td colspan="3"><b>PERIODO:</b> ${start} al ${end}</td></tr>
                     <tr><td colspan="3"></td></tr>
@@ -311,7 +371,7 @@ window.ReportsMinutasView = {
         `;
 
         days.forEach(d => {
-            const dayDate = this.getFeedingDate(cycle.start_date, d.day);
+            const dayDate = this.getFeedingDate(cycle.start_date, d.day, d.name, includeWeekends);
             const dayName = dayDate.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase();
             const dayNum = dayDate.getDate();
             const monthName = dayDate.toLocaleDateString('es-ES', { month: 'long' }).toUpperCase();
@@ -337,7 +397,13 @@ window.ReportsMinutasView = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Minuta_${branch.name.replace(/\s+/g, '_')}_${start}.xls`;
+        
+        const cleanName = (str) => (str || '').trim().replace(/[\s/\\?%*:|"<>\.\-\(\)]+/g, '_').replace(/_+/g, '_');
+        const cleanTemplate = cleanName(templateName);
+        const cleanSchool = cleanName(school.name);
+        const cleanBranch = cleanName(branch.name);
+        
+        a.download = `Minuta_Patron_${cleanTemplate}_${cleanSchool}_${cleanBranch}_${start}_${end}.xls`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

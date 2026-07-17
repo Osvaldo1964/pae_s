@@ -37,10 +37,12 @@ class MenuCycleController
     {
         try {
             $pae_id = $this->getPaeIdFromToken();
-            // Incluir conteo de proyecciones para saber si está congelado
-            $query = "SELECT c.*, 
-                      (SELECT COUNT(*) FROM cycle_projections WHERE cycle_id = c.id) as projection_count
+            // Incluir conteo de proyecciones para saber si está congelado y las sedes asociadas
+            $query = "SELECT c.*, t.name as template_name,
+                      (SELECT COUNT(*) FROM cycle_projections WHERE cycle_id = c.id) as projection_count,
+                      (SELECT GROUP_CONCAT(branch_id) FROM menu_cycle_branches WHERE cycle_id = c.id) as branch_ids
                       FROM menu_cycles c 
+                      LEFT JOIN cycle_templates t ON c.template_id = t.id
                       WHERE c.pae_id = :pae_id 
                       ORDER BY c.start_date DESC";
             $stmt = $this->conn->prepare($query);
@@ -138,8 +140,8 @@ class MenuCycleController
             if ($total_days === 0)
                 throw new Exception("No hay días hábiles o seleccionados en el rango.");
 
-            $stmtCycle = $this->conn->prepare("INSERT INTO menu_cycles (pae_id, name, start_date, end_date, total_days, status) VALUES (?, ?, ?, ?, ?, 'BORRADOR')");
-            $stmtCycle->execute([$pae_id, $name, $start_date, $end_date, $total_days]);
+            $stmtCycle = $this->conn->prepare("INSERT INTO menu_cycles (pae_id, name, start_date, end_date, total_days, status, template_id) VALUES (?, ?, ?, ?, ?, 'BORRADOR', ?)");
+            $stmtCycle->execute([$pae_id, $name, $start_date, $end_date, $total_days, $template_id]);
             $cycle_id = $this->conn->lastInsertId();
 
             if (!empty($data['branch_ids']) && is_array($data['branch_ids'])) {
