@@ -333,23 +333,27 @@ class InventoryController
                     i.name, 
                     fg.name as food_group,
                     mu.abbreviation as unit,
-                    c.average_cost as cycle_avg_cost,
-                    c.total_quantity as cycle_total_qty,
-                    c.total_value as cycle_total_value,
-                    c.purchase_count,
-                    i.unit_cost as global_avg_cost,
+                    COALESCE(c.average_cost, 0) as cycle_avg_cost,
+                    COALESCE(c.total_quantity, 0) as cycle_total_qty,
+                    COALESCE(c.total_value, 0) as cycle_total_value,
+                    COALESCE(c.purchase_count, 0) as purchase_count,
+                    COALESCE(i.unit_cost, 0) as global_avg_cost,
                     COALESCE(inv.current_stock, 0) as current_stock
-                FROM item_cycle_costs c
-                JOIN items i ON c.item_id = i.id
+                FROM (
+                    SELECT DISTINCT item_id 
+                    FROM cycle_projections 
+                    WHERE cycle_id = ?
+                ) cp
+                JOIN items i ON cp.item_id = i.id
                 JOIN food_groups fg ON i.food_group_id = fg.id
                 JOIN measurement_units mu ON i.measurement_unit_id = mu.id
-                LEFT JOIN inventory inv ON i.id = inv.item_id AND inv.pae_id = c.pae_id
-                WHERE c.pae_id = ? AND c.cycle_id = ?
+                LEFT JOIN item_cycle_costs c ON cp.item_id = c.item_id AND c.cycle_id = ? AND c.pae_id = ?
+                LEFT JOIN inventory inv ON i.id = inv.item_id AND inv.pae_id = ?
                 ORDER BY fg.name, i.name
             ";
 
             $stmt = $this->conn->prepare($query);
-            $stmt->execute([$pae_id, $cycle_id]);
+            $stmt->execute([$cycle_id, $cycle_id, $pae_id, $pae_id]);
             echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -627,7 +631,9 @@ class InventoryController
 
             $stmtDet = $this->conn->prepare("INSERT INTO purchase_order_details (po_id, item_id, quantity_ordered, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['items'] as $item) {
-                $stmtDet->execute([$po_id, $item['item_id'], $item['quantity'], $item['unit_price'], $item['subtotal']]);
+                if (floatval($item['quantity']) > 0 && floatval($item['unit_price']) > 0) {
+                    $stmtDet->execute([$po_id, $item['item_id'], $item['quantity'], $item['unit_price'], $item['subtotal']]);
+                }
             }
 
             $this->conn->commit();
@@ -722,6 +728,14 @@ class InventoryController
             $this->conn->beginTransaction();
 
             $type = $data['type'] ?? 'SALIDA_SEDE';
+            
+            $cycle_id = $data['cycle_id'] ?? null;
+            if (!$cycle_id && !empty($data['po_id'])) {
+                $stmtCycle = $this->conn->prepare("SELECT cycle_id FROM purchase_orders WHERE id = ?");
+                $stmtCycle->execute([$data['po_id']]);
+                $po_cycle_id = $stmtCycle->fetchColumn();
+                if ($po_cycle_id) $cycle_id = $po_cycle_id;
+            }
 
             if (isset($data['id'])) {
                 $stmt = $this->conn->prepare("UPDATE inventory_remissions SET 
@@ -731,7 +745,7 @@ class InventoryController
                     WHERE id = ? AND pae_id = ?");
                 $stmt->execute([
                     $type,
-                    $data['cycle_id'] ?? null,
+                    $cycle_id,
                     $data['po_id'] ?? null,
                     $data['supplier_id'] ?? null,
                     $data['branch_id'] ?? null,
@@ -754,7 +768,7 @@ class InventoryController
                     $pae_id,
                     $user_id,
                     $type,
-                    $data['cycle_id'] ?? null,
+                    $cycle_id,
                     $data['po_id'] ?? null,
                     $data['supplier_id'] ?? null,
                     $data['branch_id'] ?? null,
@@ -769,6 +783,8 @@ class InventoryController
 
             $stmtDet = $this->conn->prepare("INSERT INTO inventory_remission_details (remission_id, item_id, quantity_sent) VALUES (?, ?, ?)");
             foreach ($data['items'] as $item) {
+                if (floatval($item['quantity']) <= 0) continue;
+                
                 $stmtDet->execute([$rem_id, $item['item_id'], $item['quantity']]);
 
                 // AFECTACIÓN DE STOCK (Solo si la remisión está en estado ENVIADA o similar, o siempre si es simplificado)
@@ -809,11 +825,11 @@ class InventoryController
                         $stmtCost->execute([$weighted_avg_cost, $item['item_id'], $pae_id]);
 
                         // Actualizar costo por ciclo si hay cycle_id
-                        if (isset($data['cycle_id']) && $data['cycle_id']) {
+                        if ($cycle_id) {
                             $this->updateCycleCost(
                                 $pae_id,
                                 $item['item_id'],
-                                $data['cycle_id'],
+                                $cycle_id,
                                 floatval($item['quantity']),
                                 $unit_price
                             );

@@ -485,11 +485,17 @@ window.ComprasView = {
         const items = [];
         document.querySelectorAll('#order-items-body tr').forEach(row => {
             const itemId = row.querySelector('.row-item').value;
-            if (itemId) {
+            const qtyStr = row.querySelector('.row-qty').value.replace(/,/g, '');
+            const quantity = parseFloat(qtyStr) || 0;
+            const priceStr = row.querySelector('.row-price').value.replace(/,/g, '');
+            const price = parseFloat(priceStr) || 0;
+            
+            // Solo agregar el insumo si tiene una cantidad mayor a 0 Y un costo mayor a 0
+            if (itemId && quantity > 0 && price > 0) {
                 items.push({
                     item_id: itemId,
-                    quantity: row.querySelector('.row-qty').value.replace(/,/g, ''),
-                    unit_price: row.querySelector('.row-price').value.replace(/,/g, ''),
+                    quantity: qtyStr,
+                    unit_price: priceStr,
                     subtotal: row.dataset.subtotal
                 });
             }

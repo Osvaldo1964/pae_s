@@ -438,10 +438,12 @@ window.AlmacenView = {
             date: formData.get('date'),
             reference: formData.get('reference'),
             supplier_id: formData.get('supplier_id'),
+            cycle_id: formData.get('cycle_id'),
             notes: formData.get('notes'),
             items: items.map(item => ({
                 item_id: item.item_id,
-                quantity: item.quantity.replace(/,/g, ''), // Remove commas
+                quantity: item.quantity.toString().replace(/,/g, ''), // Remove commas
+                unit_price: item.unit_price,
                 batch: item.batch
             }))
         };

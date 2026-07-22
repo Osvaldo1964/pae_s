@@ -97,6 +97,7 @@ window.RemisionesEntradasView = {
                 <td class="text-end pe-4">
                     <div class="btn-group shadow-sm rounded-3">
                         <button class="btn btn-white btn-sm" onclick="RemisionesEntradasView.openModal(${r.id})" title="Ver"><i class="fas fa-eye text-primary"></i></button>
+                        <button class="btn btn-white btn-sm text-danger" onclick="RemisionesEntradasView.delete(${r.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
                     </div>
                 </td>
             </tr>
@@ -271,6 +272,33 @@ window.RemisionesEntradasView = {
         }
     },
 
+    async delete(id) {
+        const confirm = await Swal.fire({
+            title: '¿Eliminar Remisión?',
+            text: "Esta acción descontará el stock que ingresó. Si ya consumiste este stock en salidas, tu inventario podría quedar en negativo.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await Helper.fetchAPI(`/remissions/${id}`, { method: 'DELETE' });
+                if (res.success) {
+                    Swal.fire('¡Eliminado!', 'La remisión ha sido eliminada y el stock revertido.', 'success');
+                    this.init();
+                } else {
+                    Helper.alert('error', res.message);
+                }
+            } catch (error) {
+                Helper.alert('error', 'Error al eliminar');
+            }
+        }
+    },
+
     addItemRow(data = null, readonly = false) {
         const body = document.getElementById('remission-entrada-items-body');
         const row = document.createElement('tr');
@@ -314,10 +342,13 @@ window.RemisionesEntradasView = {
         const items = [];
         document.querySelectorAll('#remission-entrada-items-body tr').forEach(row => {
             const itemId = row.querySelector('.row-item').value;
-            if (itemId) {
+            const qtyStr = row.querySelector('.row-qty').value.replace(/,/g, '');
+            const qty = parseFloat(qtyStr) || 0;
+            
+            if (itemId && qty > 0) {
                 items.push({
                     item_id: itemId,
-                    quantity: row.querySelector('.row-qty').value
+                    quantity: qtyStr
                 });
             }
         });
