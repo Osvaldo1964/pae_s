@@ -204,12 +204,20 @@ class ConsumptionController
             return;
         }
 
-        $date = $_GET['date'] ?? date('Y-m-d');
+        $date = $_GET['date'] ?? null;
+        $start_date = $_GET['start_date'] ?? null;
+        $end_date = $_GET['end_date'] ?? null;
+        
+        // Default to today if neither date nor range is provided
+        if (!$date && !$start_date) {
+            $date = date('Y-m-d');
+        }
+
         $branch_id = $_GET['branch_id'] ?? null;
         $meal_type = $_GET['meal_type'] ?? null;
 
         $query = "SELECT 
-                    dc.id as consumption_id, dc.created_at as time, rt.name as meal_type, rt.service_time,
+                    dc.id as consumption_id, dc.created_at as time, dc.date as consumption_date, rt.name as meal_type, rt.service_time,
                     b.document_number, b.first_name, b.last_name1, b.grade, b.group_name,
                     sb.name as branch_name, s.name as school_name,
                     p.name as program_name, p.entity_logo_path, p.operator_logo_path
@@ -217,9 +225,18 @@ class ConsumptionController
                   JOIN school_branches sb ON b.branch_id = sb.id
                   JOIN schools s ON sb.school_id = s.id
                   JOIN pae_programs p ON b.pae_id = p.id
-                  LEFT JOIN daily_consumptions dc ON dc.beneficiary_id = b.id AND dc.date = ?";
+                  LEFT JOIN daily_consumptions dc ON dc.beneficiary_id = b.id AND (";
 
-        $params = [$date];
+        $params = [];
+        if ($start_date && $end_date) {
+            $query .= "dc.date BETWEEN ? AND ?";
+            $params[] = $start_date;
+            $params[] = $end_date;
+        } else {
+            $query .= "dc.date = ?";
+            $params[] = $date;
+        }
+        $query .= ")";
 
         if ($meal_type) {
             $query .= " AND dc.ration_type_id = ?";
