@@ -198,16 +198,17 @@ const App = {
                         'reports-insumos': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-recetas': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-minutas': { name: 'Alimentación', route: 'reports-ali' },
+                        'reports-ciclos-analisis': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-presupuesto': { name: 'Financiero', route: 'reports-fin' },
                         'reports-costs': { name: 'Financiero', route: 'reports-fin' },
                         'reports-ejecucion': { name: 'Financiero', route: 'reports-fin' },
                         'reports-movimientos-aux': { name: 'Financiero', route: 'reports-fin' },
-                        'reports-pay': { name: 'Talento Humano', route: 'reports-rh' },
-                        'reports-hr-positions': { name: 'Talento Humano', route: 'reports-rh' },
-                        'reports-hr-employees': { name: 'Talento Humano', route: 'reports-rh' },
-                        'reports-beneficiarios': { name: 'Administrativo', route: 'reports-adm' },
                         'reports-attendance': { name: 'Administrativo', route: 'reports-adm' },
-                        'reports-carnets': { name: 'Administrativo', route: 'reports-adm' }
+                        'reports-carnets': { name: 'Administrativo', route: 'reports-adm' },
+                        'reports-beneficiarios': { name: 'Administrativo', route: 'reports-adm' },
+                        'reports-pay': { name: 'Talento Humano', route: 'reports-rh' },
+                        'reports-hr-employees': { name: 'Talento Humano', route: 'reports-rh' },
+                        'reports-hr-positions': { name: 'Talento Humano', route: 'reports-rh' }
                     };
                     const hub = hubMap[route];
                     if (hub && route !== hub.route) {
@@ -315,6 +316,7 @@ const App = {
                     'reports-insumos': 'reports_insumos',
                     'reports-recetas': 'reports_recetas',
                     'reports-minutas': 'reports_minutas',
+                    'reports-ciclos-analisis': 'reports_ciclos_analisis',
                     'reports-costs': 'reports_costs',
                     'reports-carnets': 'reports_carnets',
                     'reports-beneficiarios': 'reports_beneficiarios',
@@ -968,7 +970,8 @@ const App = {
             modules = [
                 { name: 'Impresión de Insumos', route: 'reports-insumos', icon: 'fas fa-carrot', description: 'Listado maestro de insumos y nutrientes', color: 'success' },
                 { name: 'Impresión de Recetas', route: 'reports-recetas', icon: 'fas fa-book-open', description: 'Fichas técnicas de preparación', color: 'success' },
-                { name: 'Minutas x Ciclo x Sede', route: 'reports-minutas', icon: 'fas fa-calendar-alt', description: 'Programación detallada por institución', color: 'success' }
+                { name: 'Minutas x Ciclo x Sede', route: 'reports-minutas', icon: 'fas fa-calendar-alt', description: 'Programación detallada por institución', color: 'success' },
+                { name: 'Análisis de Ciclos', route: 'reports-ciclos-analisis', icon: 'fas fa-chart-pie', description: 'Verificar cumplimiento de compras, entradas y salidas por ciclo', color: 'success' }
             ];
         } else if (category === 'reports-fin') {
             title = 'Reportes Financieros';

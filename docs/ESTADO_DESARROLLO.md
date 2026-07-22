@@ -272,6 +272,12 @@
 
 ---
 
+### v1.9.21 (22 Julio 2026 - Análisis de Ciclos y Reset de Inventario)
+- ✅ **Análisis Integral de Ciclos:** Nuevo reporte gerencial (`reports_ciclos_analisis`) que cruza dinámicamente Proyecciones vs Compras (OC) vs Entradas (Almacén) vs Salidas (Sedes) con barras de progreso visuales de cumplimiento.
+- ✅ **Optimización de Órdenes y Remisiones:** Los formularios de compras y remisiones ahora ignoran y excluyen automáticamente las filas con cantidades o precios en 0, evitando registrar "basura" en la base de datos.
+- ✅ **Reversión de Remisiones:** Agregada la capacidad de eliminar remisiones registradas por error, recalculando automáticamente el stock y los costos promedio.
+- ✅ **Herramienta de Reset:** Creado script de sistema para limpiar y reiniciar desde cero todo el ecosistema de inventarios (OCs, Remisiones, Costos de Ciclos) ideal para pruebas y arranques de nuevos periodos.
+
 ### v1.9.16 (09 Julio 2026 - Suite de Gestión Presupuestal y Reportes Corporativos)
 - ✅ **Ajustes Presupuestales:** Implementado módulo de Adiciones y Reducciones que actualiza los saldos definitivos por sede en tiempo real y valida saldos para prevenir balances negativos.
 - ✅ **Categorías de Egresos:** Creado catálogo de tipos de movimientos financieros por programa PAE, con inyección inicial de categorías base y soporte para filtrados.

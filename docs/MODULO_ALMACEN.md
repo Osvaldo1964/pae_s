@@ -1,7 +1,7 @@
 # Módulo de Almacén - Documentación Técnica
 
-**Versión:** 1.7.0  
-**Última actualización:** 09 de Febrero 2026
+**Versión:** 1.9.21  
+**Última actualización:** 22 de Julio 2026
 
 ---
 
@@ -12,6 +12,8 @@ El módulo de Almacén es un sistema profesional de gestión de inventarios que 
 - **Trazabilidad de Costos por Ciclo** (análisis de variación de precios)
 - **Kardex Digital** (historial completo de movimientos)
 - **Herramientas de Auditoría** (conteo físico y ajustes)
+- **Reportes Gerenciales:** Análisis de ciclos cruzando Proyecciones, Compras, Entradas y Salidas.
+- **Herramientas de Mantenimiento:** Limpieza de registros y reversión de remisiones.
 
 ---
 

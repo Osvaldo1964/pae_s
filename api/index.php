@@ -441,6 +441,8 @@ if ($resource === 'auth') {
             $controller->getKardex($id_param);
         } elseif ($action === 'cycle-cost-report' && $id_param) {
             $controller->getCycleCostReport($id_param);
+        } elseif ($action === 'cycle-analysis-report' && $id_param) {
+            $controller->getCycleAnalysisReport($id_param);
         } else {
             $controller->getStock();
         }

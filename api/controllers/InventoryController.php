@@ -361,6 +361,51 @@ class InventoryController
         }
     }
 
+    /**
+     * Get analysis of cycle (projections vs purchases vs entries vs exits)
+     */
+    public function getCycleAnalysisReport($cycle_id)
+    {
+        try {
+            $pae_id = $this->getPaeIdFromToken();
+
+            $query = "
+                SELECT 
+                    i.id,
+                    i.code, 
+                    i.name, 
+                    fg.name as food_group,
+                    mu.abbreviation as unit,
+                    COALESCE(SUM(cp.total_quantity), 0) as projected_qty,
+                    (SELECT COALESCE(SUM(pod.quantity_ordered), 0) 
+                     FROM purchase_order_details pod 
+                     JOIN purchase_orders po ON pod.po_id = po.id 
+                     WHERE po.cycle_id = cp.cycle_id AND pod.item_id = cp.item_id) as ordered_qty,
+                    (SELECT COALESCE(SUM(remd.quantity_sent), 0) 
+                     FROM inventory_remission_details remd 
+                     JOIN inventory_remissions rem ON remd.remission_id = rem.id 
+                     WHERE rem.cycle_id = cp.cycle_id AND rem.type = 'ENTRADA_OC' AND remd.item_id = cp.item_id) as received_qty,
+                    (SELECT COALESCE(SUM(remd.quantity_sent), 0) 
+                     FROM inventory_remission_details remd 
+                     JOIN inventory_remissions rem ON remd.remission_id = rem.id 
+                     WHERE rem.cycle_id = cp.cycle_id AND rem.type = 'SALIDA_SEDE' AND remd.item_id = cp.item_id) as delivered_qty
+                FROM cycle_projections cp
+                JOIN items i ON cp.item_id = i.id
+                JOIN food_groups fg ON i.food_group_id = fg.id
+                JOIN measurement_units mu ON i.measurement_unit_id = mu.id
+                WHERE cp.cycle_id = ?
+                GROUP BY cp.item_id, i.id, i.code, i.name, fg.name, mu.abbreviation, cp.cycle_id
+                ORDER BY fg.name, i.name
+            ";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$cycle_id]);
+            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
+    }
+
     // =====================================================
     // 2. COTIZACIONES
     // =====================================================
