@@ -443,8 +443,14 @@ if ($resource === 'auth') {
             $controller->getCycleCostReport($id_param);
         } elseif ($action === 'cycle-analysis-report' && $id_param) {
             $controller->getCycleAnalysisReport($id_param);
+        } elseif ($action === 'dispatched-items') {
+            $controller->getDispatchedItems();
         } else {
             $controller->getStock();
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($action === 'returns') {
+            $controller->registerReturn();
         }
     }
 } elseif ($resource === 'movements') {

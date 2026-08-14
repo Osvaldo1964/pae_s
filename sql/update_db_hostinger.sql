@@ -77,3 +77,21 @@ CREATE TABLE IF NOT EXISTS `presupuesto_modificaciones_detalles` (
 -- RENAME TABLE `presupuesto_ajustes` TO `backup_presupuesto_ajustes`;
 -- RENAME TABLE `presupuesto_traslados` TO `backup_presupuesto_traslados`;
 
+-- ====================================================================
+-- BLOQUE 3: Módulo de Devoluciones de Inventario desde Sedes
+-- ====================================================================
+
+-- 1. Ampliar el ENUM de tipos de movimiento para incluir las devoluciones
+ALTER TABLE `inventory_movements` 
+MODIFY COLUMN `movement_type` ENUM('ENTRADA', 'SALIDA', 'AJUSTE', 'TRASLADO', 'DEVOLUCION_SEDE') NOT NULL;
+
+-- 2. Añadir la columna branch_id para relacionar el movimiento directamente con la sede educativa
+ALTER TABLE `inventory_movements` 
+ADD COLUMN `branch_id` INT NULL DEFAULT NULL AFTER `supplier_id`;
+
+-- 3. Crear la llave foránea para mantener la integridad referencial con school_branches
+ALTER TABLE `inventory_movements` 
+ADD CONSTRAINT `fk_inv_mov_branch` 
+FOREIGN KEY (`branch_id`) REFERENCES `school_branches` (`id`) ON DELETE SET NULL;
+
+

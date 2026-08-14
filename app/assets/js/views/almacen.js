@@ -183,6 +183,15 @@ window.AlmacenView = {
         });
 
         this.initDataTable();
+
+        // Si la ruta activa es devoluciones, cambiar a la pestaña de Devoluciones
+        if (window.location.hash.includes('devoluciones')) {
+            const devTabBtn = document.querySelector('button[data-bs-target="#tab-devoluciones"]');
+            if (devTabBtn) {
+                const tab = new bootstrap.Tab(devTabBtn);
+                tab.show();
+            }
+        }
     },
 
     renderStockTable() {
@@ -257,6 +266,29 @@ window.AlmacenView = {
         `).join('');
     },
 
+    renderReturnsTable() {
+        const returns = this.movements.filter(m => m.movement_type === 'DEVOLUCION_SEDE' || (m.reference_number && m.reference_number.startsWith('DEV-')));
+
+        if (returns.length === 0) return '<tr><td colspan="5" class="text-center py-4 text-muted">No hay devoluciones registradas</td></tr>';
+
+        return returns.map(r => {
+            const branchName = r.branch_name || (r.notes ? r.notes.split('|')[0].replace('Devolución desde Sede: ', '').trim() : 'Sede Desconocida');
+            return `
+            <tr>
+                <td class="ps-4">${r.movement_date}</td>
+                <td><span class="badge bg-danger me-2">Devolución</span> ${branchName}</td>
+                <td>${r.cycle_id ? 'Ciclo ' + r.cycle_id : 'N/A'}</td>
+                <td>${r.user_name}</td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-light border" onclick="AlmacenView.viewMovementDetail(${r.id})" title="Ver Detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    },
+
     initDataTable() {
         // En un app real usaríamos DataTables.net aquí.
         console.log('DataTable initialized');
@@ -264,6 +296,177 @@ window.AlmacenView = {
 
     attachEvents() {
         // Eventos delegados si es necesario
+    },
+
+    async openReturnModal() {
+        // Fetch branches for the modal
+        let branches = [];
+        try {
+            const res = await Helper.fetchAPI('/branches');
+            if (res.success) branches = res.data;
+        } catch (e) {
+            console.error('Error fetching branches', e);
+        }
+
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal fade';
+        modalDiv.id = 'returnModal';
+        modalDiv.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="fas fa-undo me-2"></i>Registrar Devolución de Sede</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <form id="return-form">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Sede Educativa</label>
+                                    <select class="form-select" name="branch_id" required>
+                                        <option value="">Seleccione Sede...</option>
+                                        ${branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Ciclo</label>
+                                    <select class="form-select" name="cycle_id" required>
+                                        <option value="">Seleccione Ciclo...</option>
+                                        ${this.cycles.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                
+                                <div class="col-12 mt-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0 fw-bold">Ítems a Devolver</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="AlmacenView.addReturnItemRow()">
+                                            <i class="fas fa-plus me-1"></i> Añadir Ítem
+                                        </button>
+                                    </div>
+                                    <div class="table-responsive border rounded">
+                                        <table class="table table-sm mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Ítem</th>
+                                                    <th style="width: 20%" class="text-end">Cantidad</th>
+                                                    <th style="width: 30%">Justificación / Notas</th>
+                                                    <th style="width: 5%"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="return-items-body">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mt-3">
+                                    <label class="form-label small fw-bold">Notas Adicionales (Opcional)</label>
+                                    <textarea class="form-control" name="notes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" onclick="AlmacenView.saveReturn()">Confirmar Devolución</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        const modal = new bootstrap.Modal(modalDiv);
+        modal.show();
+
+        this.addReturnItemRow();
+
+        modalDiv.addEventListener('hidden.bs.modal', function () {
+            modalDiv.remove();
+        });
+    },
+
+    addReturnItemRow() {
+        const tbody = document.getElementById('return-items-body');
+        const tr = document.createElement('tr');
+        tr.className = 'return-item-row';
+        tr.innerHTML = `
+            <td>
+                <select class="form-select form-select-sm" name="item_id" required>
+                    <option value="">Buscar ítem...</option>
+                    ${this.inventory.map(i => `<option value="${i.item_id}">${i.name} (${i.code})</option>`).join('')}
+                </select>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm text-end" name="quantity" 
+                       value="" step="0.001" min="0.001" required placeholder="0.000">
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm" name="batch" placeholder="Motivo...">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    },
+
+    async saveReturn() {
+        const form = document.getElementById('return-form');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        const items = [];
+        
+        document.querySelectorAll('.return-item-row').forEach(row => {
+            const itemId = row.querySelector('[name="item_id"]').value;
+            const quantity = parseFloat(row.querySelector('[name="quantity"]').value);
+            const batch = row.querySelector('[name="batch"]').value || 'DEVOLUCION';
+
+            if (itemId && quantity > 0) {
+                items.push({
+                    item_id: itemId,
+                    quantity: quantity,
+                    batch: batch
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            Helper.alert('error', 'Debe añadir al menos un ítem con cantidad mayor a cero');
+            return;
+        }
+
+        const data = {
+            branch_id: formData.get('branch_id'),
+            cycle_id: formData.get('cycle_id'),
+            notes: formData.get('notes'),
+            items: items
+        };
+
+        try {
+            Helper.loading(true);
+            const response = await Helper.fetchAPI('/inventory/returns', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            Helper.loading(false);
+
+            if (response.success) {
+                bootstrap.Modal.getInstance(document.getElementById('returnModal')).hide();
+                Helper.alert('success', 'Devolución registrada correctamente');
+                await this.init(); 
+            } else {
+                Helper.alert('error', response.message);
+            }
+        } catch (error) {
+            Helper.loading(false);
+            console.error('Error saving return:', error);
+            Helper.alert('error', 'Error al procesar la devolución');
+        }
     },
 
     openMovementModal(type) {

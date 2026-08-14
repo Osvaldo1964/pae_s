@@ -156,6 +156,9 @@ const App = {
                 } else if (route === 'team') {
                     foundGroup = App.state.menu.find(g => g.name === 'Configuración');
                     foundModule = { name: 'Mi Equipo' };
+                } else if (route === 'devoluciones') {
+                    foundGroup = App.state.menu.find(g => g.id == 6 || g.name === 'Inventarios') || { id: 6, name: 'Inventarios' };
+                    foundModule = { name: 'Devoluciones de Sede' };
                 } else if (route === 'population-types') {
                     foundGroup = App.state.menu.find(g => g.name === 'Alimentación');
                     foundModule = { name: 'Raciones y Población' };
@@ -298,6 +301,7 @@ const App = {
                     'beneficiarios': 'beneficiaries',
                     'items': 'items',
                     'almacen': 'almacen',
+                    'devoluciones': 'devoluciones',
                     'compras': 'compras',
                     'cotizaciones': 'cotizaciones',
                     'salidas': 'salidas',
@@ -831,6 +835,19 @@ const App = {
             modulesToRender.push({ name: 'Modificaciones Contractuales', route: 'fin-modificaciones', icon: 'fas fa-file-contract', description: 'Adiciones, Reducciones y Traslados Presupuestales', virtual: true, color: 'danger' });
             modulesToRender.push({ name: 'Definición Costos y Gastos', route: 'fin-movimiento-tipos', icon: 'fas fa-tags', description: 'Categorización de Egresos', virtual: true, color: 'dark' });
             modulesToRender.push({ name: 'Registro Costos y Gastos', route: 'fin-movimientos', icon: 'fas fa-exchange-alt', description: 'Registro de Movimientos de Costos y Gastos', virtual: true, color: 'success' });
+        }
+
+        if (group.id == 6 || group.name === 'Inventarios') {
+            if (!modulesToRender.find(m => m.route === 'devoluciones')) {
+                modulesToRender.push({ 
+                    name: 'Devoluciones de Sede', 
+                    route: 'devoluciones', 
+                    icon: 'fas fa-undo', 
+                    description: 'Reingreso de ítems desde sedes educativas', 
+                    virtual: true, 
+                    color: 'danger' 
+                });
+            }
         }
 
         if (group.id == 98 || group.name === 'Repositorio' || group.name === 'Entregables') {

@@ -84,10 +84,11 @@ class InventoryController
     {
         try {
             $pae_id = $this->getPaeIdFromToken();
-            $query = "SELECT m.*, u.full_name as user_name, s.name as supplier_name
+            $query = "SELECT m.*, u.full_name as user_name, s.name as supplier_name, sb.name as branch_name
                       FROM inventory_movements m
                       JOIN users u ON m.user_id = u.id
                       LEFT JOIN suppliers s ON m.supplier_id = s.id
+                      LEFT JOIN school_branches sb ON m.branch_id = sb.id
                       WHERE m.pae_id = :pae_id
                       ORDER BY m.movement_date DESC, m.created_at DESC";
             $stmt = $this->conn->prepare($query);
@@ -940,6 +941,85 @@ class InventoryController
 
             $this->conn->commit();
             echo json_encode(['success' => true, 'message' => 'Remisión eliminada y stock actualizado']);
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction())
+                $this->conn->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    // =====================================================
+    // 5. DEVOLUCIONES
+    // =====================================================
+    
+    public function registerReturn()
+    {
+        try {
+            $data = json_decode(file_get_contents("php://input"), true);
+            $pae_id = $this->getPaeIdFromToken();
+            $user_id = $this->getUserIdFromToken();
+
+            if (empty($data['branch_id']) || empty($data['items'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Faltan datos requeridos (sede o ítems)']);
+                return;
+            }
+
+            // Obtener el nombre de la sede
+            $stmtBranch = $this->conn->prepare("SELECT name FROM school_branches WHERE id = ?");
+            $stmtBranch->execute([$data['branch_id']]);
+            $branch_name = $stmtBranch->fetchColumn();
+            
+            $base_notes = "Devolución desde Sede: " . ($branch_name ?: 'Desconocida');
+            if (!empty($data['notes'])) {
+                $base_notes .= " | Notas: " . $data['notes'];
+            }
+
+            $this->conn->beginTransaction();
+
+            // 1. Cabecera del Movimiento (DEVOLUCION_SEDE)
+            $stmt = $this->conn->prepare("INSERT INTO inventory_movements (pae_id, user_id, branch_id, movement_type, reference_number, movement_date, cycle_id, notes) 
+                                         VALUES (?, ?, ?, 'DEVOLUCION_SEDE', ?, ?, ?, ?)");
+            $stmt->execute([
+                $pae_id,
+                $user_id,
+                $data['branch_id'],
+                'DEV-' . time(), // Referencia automática
+                date('Y-m-d'),
+                $data['cycle_id'] ?? null,
+                $base_notes
+            ]);
+            $movement_id = $this->conn->lastInsertId();
+
+            // 2. Detalles y Actualización de Stock
+            $stmtDet = $this->conn->prepare("INSERT INTO inventory_movement_details (movement_id, item_id, quantity, unit_price, batch_number) 
+                                            VALUES (?, ?, ?, 0, ?)");
+
+            $stmtInv = $this->conn->prepare("INSERT INTO inventory (pae_id, item_id, current_stock, last_entry_date) 
+                                            VALUES (?, ?, ?, CURRENT_DATE) 
+                                            ON DUPLICATE KEY UPDATE 
+                                            current_stock = current_stock + ?, 
+                                            last_entry_date = CURRENT_DATE");
+
+            foreach ($data['items'] as $item) {
+                if (floatval($item['quantity']) <= 0) continue;
+
+                // Registrar en detalle
+                $stmtDet->execute([
+                    $movement_id,
+                    $item['item_id'],
+                    $item['quantity'],
+                    $item['batch'] ?? 'DEVOLUCION'
+                ]);
+
+                // Actualizar Stock sumando la devolución
+                $qty = floatval($item['quantity']);
+                $stmtInv->execute([$pae_id, $item['item_id'], $qty, $qty]);
+            }
+
+            $this->conn->commit();
+            echo json_encode(['success' => true, 'message' => 'Devolución registrada correctamente']);
         } catch (Exception $e) {
             if ($this->conn->inTransaction())
                 $this->conn->rollBack();
