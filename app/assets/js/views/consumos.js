@@ -21,8 +21,11 @@ var ConsumosView = {
                     <h2 class="text-primary-custom fw-bold mb-0">Planilla de Consumo</h2>
                     <p class="text-muted">Planilla de asistencia con listado completo de estudiantes y estado de entrega.</p>
                 </div>
-                <div class="col-md-4 text-end">
-                    <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="ConsumosView.printCurrent()">
+                <div class="col-md-4 text-end d-flex justify-content-end gap-2">
+                    <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" onclick="ConsumosView.openScannerModal()">
+                        <i class="fas fa-qrcode me-2"></i>Escanear QR / Entrega
+                    </button>
+                    <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm" onclick="ConsumosView.printCurrent()">
                         <i class="fas fa-print me-2"></i>Imprimir Planilla
                     </button>
                 </div>
@@ -361,6 +364,172 @@ var ConsumosView = {
         `;
 
         Helper.printHTML(html);
+    },
+
+    openScannerModal: () => {
+        const activeBranch = document.getElementById('filter-branch')?.value || '';
+        
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal fade';
+        modalDiv.id = 'qrScannerModal';
+        modalDiv.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header bg-success text-white rounded-top-4 p-3">
+                        <h5 class="modal-title fw-bold"><i class="fas fa-qrcode me-2"></i>Escanear Código QR (Individual o Grupo)</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">TIEMPO DE COMIDA / RACIÓN <span class="text-danger">*</span></label>
+                            <select id="scanner-meal-type" class="form-select border-2 fw-bold">
+                                <option value="ALMUERZO">ALMUERZO</option>
+                                <option value="DESAYUNO">DESAYUNO</option>
+                                <option value="REFRIGERIO">REFRIGERIO</option>
+                                <option value="COMPLEMENTO ALIMENTARIO">COMPLEMENTO ALIMENTARIO</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">CÓDIGO QR ESCANEADO <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-barcode text-muted"></i></span>
+                                <input type="text" id="scanner-qr-input" class="form-control border-2 font-monospace" 
+                                       placeholder="Escanee o pegue el código del QR aquí..." autofocus>
+                            </div>
+                            <small class="text-muted mt-1 d-block">Soporta carnets individuales de estudiante y carnets grupales por curso.</small>
+                        </div>
+
+                        <div id="scanner-result-area" class="mt-3"></div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 rounded-bottom-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" onclick="ConsumosView.processQrCode()">
+                            <i class="fas fa-check me-1"></i> Procesar Código
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modalDiv);
+        const modal = new bootstrap.Modal(modalDiv);
+        modal.show();
+
+        const inputEl = document.getElementById('scanner-qr-input');
+        if (inputEl) {
+            setTimeout(() => inputEl.focus(), 500);
+            inputEl.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    ConsumosView.processQrCode();
+                }
+            });
+        }
+
+        modalDiv.addEventListener('hidden.bs.modal', () => modalDiv.remove());
+    },
+
+    processQrCode: async () => {
+        const inputEl = document.getElementById('scanner-qr-input');
+        const mealType = document.getElementById('scanner-meal-type').value;
+        const activeBranch = document.getElementById('filter-branch')?.value || '';
+        const token = inputEl ? inputEl.value.trim() : '';
+
+        if (!token) {
+            Helper.alert('error', 'Por favor escanee o ingrese un código QR válido');
+            return;
+        }
+
+        Helper.loading(true, 'Procesando código QR...');
+
+        try {
+            // Caso 1: QR Grupal (PAE_GROUP:school_id:branch_id:grade:group_name)
+            if (token.startsWith('PAE_GROUP:')) {
+                const parts = token.split(':');
+                const schoolId = parts[1] || null;
+                const branchId = parts[2] || activeBranch;
+                const grade = parts[3] || null;
+                const groupName = parts[4] || null;
+
+                if (!branchId) {
+                    Helper.loading(false);
+                    Helper.alert('error', 'El código QR no contiene el ID de la sede y no ha seleccionado una sede en los filtros.');
+                    return;
+                }
+
+                const res = await Helper.fetchAPI('/deliveries/group', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        school_id: schoolId,
+                        branch_id: branchId,
+                        grade: grade,
+                        group_name: groupName,
+                        meal_type: mealType
+                    })
+                });
+
+                Helper.loading(false);
+
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Entrega Masiva Exitosa!',
+                        html: `
+                            <div class="text-start">
+                                <p class="fw-bold mb-1">${res.message}</p>
+                                <hr>
+                                <small><strong>Total Estudiantes:</strong> ${res.total_students}</small><br>
+                                <small class="text-success"><strong>Registrados Hoy:</strong> ${res.registered}</small><br>
+                                ${res.skipped_already_served > 0 ? `<small class="text-warning"><strong>Ya Atendidos Antes:</strong> ${res.skipped_already_served}</small>` : ''}
+                            </div>
+                        `
+                    });
+                    inputEl.value = '';
+                    inputEl.focus();
+                    ConsumosView.loadData();
+                } else {
+                    Helper.alert('error', res.message || 'Error al procesar la entrega masiva');
+                }
+
+            } else if (token.startsWith('PAE:')) {
+                // Caso 2: QR Individual de Beneficiario (PAE:beneficiary_id:doc:name)
+                const parts = token.split(':');
+                const beneficiaryId = parts[1];
+
+                if (!beneficiaryId || !activeBranch) {
+                    Helper.loading(false);
+                    Helper.alert('error', 'Para entregar carnets individuales, por favor seleccione una Sede en los filtros arriba.');
+                    return;
+                }
+
+                const res = await Helper.fetchAPI('/deliveries', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        beneficiary_id: beneficiaryId,
+                        branch_id: activeBranch,
+                        meal_type: mealType
+                    })
+                });
+
+                Helper.loading(false);
+
+                if (res.id || res.message.includes('exitosamente')) {
+                    Helper.alert('success', res.message || 'Entrega registrada exitosamente');
+                    inputEl.value = '';
+                    inputEl.focus();
+                    ConsumosView.loadData();
+                } else {
+                    Helper.alert('error', res.message || 'Error al registrar entrega');
+                }
+            } else {
+                Helper.loading(false);
+                Helper.alert('error', 'Formato de código QR no reconocido');
+            }
+        } catch (e) {
+            Helper.loading(false);
+            console.error('Error processing QR:', e);
+            Helper.alert('error', 'Error de comunicación con el servidor');
+        }
     }
 };
 

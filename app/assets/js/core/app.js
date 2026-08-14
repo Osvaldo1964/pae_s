@@ -144,7 +144,8 @@ const App = {
                     'reports-hr-employees': 'Listado de Personal',
                     'reports-beneficiarios': 'Listado de Beneficiarios',
                     'reports-attendance': 'Control de Asistencia',
-                    'reports-carnets': 'Impresión de Carnets'
+                    'reports-carnets': 'Impresión de Carnets',
+                    'reports-qr-courses': 'Generar QR Cursos'
                 };
 
                 if (reportNames[route]) {
@@ -208,6 +209,7 @@ const App = {
                         'reports-movimientos-aux': { name: 'Financiero', route: 'reports-fin' },
                         'reports-attendance': { name: 'Administrativo', route: 'reports-adm' },
                         'reports-carnets': { name: 'Administrativo', route: 'reports-adm' },
+                        'reports-qr-courses': { name: 'Administrativo', route: 'reports-adm' },
                         'reports-beneficiarios': { name: 'Administrativo', route: 'reports-adm' },
                         'reports-pay': { name: 'Talento Humano', route: 'reports-rh' },
                         'reports-hr-employees': { name: 'Talento Humano', route: 'reports-rh' },
@@ -323,6 +325,7 @@ const App = {
                     'reports-ciclos-analisis': 'reports_ciclos_analisis',
                     'reports-costs': 'reports_costs',
                     'reports-carnets': 'reports_carnets',
+                    'reports-qr-courses': 'reports_qr_courses',
                     'reports-beneficiarios': 'reports_beneficiarios',
                     'reports-attendance': 'reports_attendance',
                     'fin-terceros': 'fin_terceros',
@@ -1007,6 +1010,7 @@ const App = {
             modules = [
                 { name: 'Control de Asistencia', route: 'reports-attendance', icon: 'fas fa-user-check', description: 'Reporte de raciones entregadas' },
                 { name: 'Impresión de Carnets', route: 'reports-carnets', icon: 'fas fa-id-badge', description: 'Generación masiva de carnets con QR para beneficiarios' },
+                { name: 'Generar QR Cursos', route: 'reports-qr-courses', icon: 'fas fa-qrcode', description: 'Carnet de control QR por institución, sede, grado y grupo' },
                 { name: 'Listado de Beneficiarios', route: 'reports-beneficiarios', icon: 'fas fa-users', description: 'Generar listado de beneficiarios con filtros de institución y sede para Excel o PDF' },
                 { name: 'Bandeja de PQRs', route: 'pqrs', icon: 'fas fa-envelope-open-text', description: 'Gestión y resolución de solicitudes ciudadanas' }
             ];

@@ -180,5 +180,138 @@ class DeliveryController
         ]);
 
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    /**
+     * Registrar entrega masiva por Grupo / Curso (QR Grupal)
+     * POST /api/deliveries/group
+     */
+    public function registerGroupDelivery()
+    {
+        $auth = $this->getAuthData();
+        if (!$auth) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "No autorizado"]);
+            return;
+        }
+
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        if (empty($data['branch_id'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta la sede (branch_id)"]);
+            return;
+        }
+
+        $mealType = !empty($data['meal_type']) ? $data['meal_type'] : 'ALMUERZO';
+        $grade = isset($data['grade']) ? trim($data['grade']) : null;
+        $groupName = isset($data['group_name']) ? trim($data['group_name']) : (isset($data['group']) ? trim($data['group']) : null);
+        $today = date('Y-m-d');
+        $currentTime = date('H:i:s');
+
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Obtener todos los beneficiarios activos que coinciden con la sede, grado y grupo
+            $sql = "SELECT id, first_name, last_name1, document_number 
+                    FROM beneficiaries 
+                    WHERE pae_id = :pae 
+                    AND branch_id = :branch 
+                    AND status = 'ACTIVO'";
+
+            $params = [
+                ':pae' => $auth['pae_id'],
+                ':branch' => $data['branch_id']
+            ];
+
+            if ($grade !== null && $grade !== '') {
+                $sql .= " AND grade = :grade";
+                $params[':grade'] = $grade;
+            }
+
+            if ($groupName !== null && $groupName !== '') {
+                $sql .= " AND (group_name = :group OR group_letter = :group)";
+                $params[':group'] = $groupName;
+            }
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            $beneficiaries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($beneficiaries)) {
+                $this->conn->rollBack();
+                http_response_code(404);
+                echo json_encode([
+                    "success" => false, 
+                    "message" => "No se encontraron beneficiarios activos para Grado " . ($grade ?: 'Todos') . " Grupo " . ($groupName ?: 'Todos')
+                ]);
+                return;
+            }
+
+            // 2. Obtener lista de IDs que ya recibieron la ración de este tipo hoy
+            $benIds = array_column($beneficiaries, 'id');
+            $inClause = implode(',', array_fill(0, count($benIds), '?'));
+
+            $checkSql = "SELECT beneficiary_id FROM " . $this->table_name . " 
+                         WHERE pae_id = ? AND delivery_date = ? AND meal_type = ? 
+                         AND beneficiary_id IN ($inClause)";
+            
+            $checkParams = array_merge([$auth['pae_id'], $today, $mealType], $benIds);
+            $checkStmt = $this->conn->prepare($checkSql);
+            $checkStmt->execute($checkParams);
+            $alreadyServed = $checkStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+            $alreadyServedSet = array_flip($alreadyServed);
+
+            // 3. Registrar a los beneficiarios pendientes
+            $insertSql = "INSERT INTO " . $this->table_name . " 
+                          (pae_id, branch_id, beneficiary_id, user_id, delivery_date, delivery_time, meal_type)
+                          VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $insertStmt = $this->conn->prepare($insertSql);
+
+            $registeredCount = 0;
+            $skippedCount = 0;
+
+            foreach ($beneficiaries as $b) {
+                if (isset($alreadyServedSet[$b['id']])) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $insertStmt->execute([
+                    $auth['pae_id'],
+                    $data['branch_id'],
+                    $b['id'],
+                    $auth['id'],
+                    $today,
+                    $currentTime,
+                    $mealType
+                ]);
+                $registeredCount++;
+            }
+
+            $this->conn->commit();
+
+            $msg = "Se registraron {$registeredCount} entregas de {$mealType} para Grado " . ($grade ?: 'General') . " - Grupo " . ($groupName ?: 'General');
+            if ($skippedCount > 0) {
+                $msg .= " ({$skippedCount} ya habían sido atendidos hoy).";
+            }
+
+            echo json_encode([
+                "success" => true,
+                "total_students" => count($beneficiaries),
+                "registered" => $registeredCount,
+                "skipped_already_served" => $skippedCount,
+                "meal_type" => $mealType,
+                "grade" => $grade,
+                "group" => $groupName,
+                "message" => $msg
+            ]);
+
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode(["success" => false, "message" => "Error interno: " . $e->getMessage()]);
+        }
     }
 }
+

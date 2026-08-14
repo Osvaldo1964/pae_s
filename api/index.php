@@ -731,7 +731,11 @@ if ($resource === 'auth') {
 } elseif ($resource === 'deliveries') {
     $controller = new \Controllers\DeliveryController();
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $controller->register();
+        if ($action === 'group') {
+            $controller->registerGroupDelivery();
+        } else {
+            $controller->register();
+        }
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $controller->index();
     }
