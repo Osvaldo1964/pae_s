@@ -310,6 +310,7 @@ const App = {
                     'remisiones': 'remisiones_entradas',
                     'recetario': 'recetario',
                     'minutas': 'minutas',
+                    'users': (App.state.user && App.state.user.role_id !== 1) ? 'team' : 'users',
                     'team': 'team',
                     'consumos': 'consumos',
                     'hr-positions': 'hr_positions',
