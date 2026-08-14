@@ -145,6 +145,7 @@ class TenantController
 
                 http_response_code(201);
                 echo json_encode([
+                    "success" => true,
                     "message" => "Programa PAE creado exitosamente",
                     "pae_id" => $paeId
                 ]);

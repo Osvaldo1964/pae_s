@@ -565,7 +565,7 @@ var PaeProgramsView = {
                 headers: {} // Let fetch set Content-Type for FormData
             });
 
-            if (data.success) {
+            if (data.success || data.pae_id) {
                 Helper.alert('success', isEdit ? 'Programa actualizado' : 'Programa creado');
                 bootstrap.Modal.getInstance(document.getElementById('modalPae')).hide();
                 await this.loadPrograms();
