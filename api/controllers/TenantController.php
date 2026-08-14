@@ -64,27 +64,44 @@ class TenantController
                     :start_date, :end_date, :contract_num, :contract_val, :periodicity
                 )";
 
+                $dept = $data->department ?? null;
+                $city = $data->city ?? null;
+                $opName = $data->operator_name ?? null;
+                $opNit = $data->operator_nit ?? null;
+                $opAddr = $data->operator_address ?? null;
+                $opPhone = $data->operator_phone ?? null;
+                $opEmail = $data->operator_email ?? null;
+                $startDate = !empty($data->start_date) ? $data->start_date : null;
+                $endDate = !empty($data->end_date) ? $data->end_date : null;
+                $contractNum = $data->contract_number ?? null;
+                $contractVal = !empty($data->contract_value) ? $data->contract_value : 0;
+                $periodicity = $data->reporting_periodicity ?? 'MENSUAL';
+
                 $stmtPae = $this->conn->prepare($sqlPae);
                 $stmtPae->bindParam(":name", $data->name);
                 $stmtPae->bindParam(":entity", $data->entity_name);
                 $stmtPae->bindParam(":nit", $data->nit);
                 $stmtPae->bindParam(":email", $data->admin_email); // Program Contact Email
-                $stmtPae->bindParam(":dept", $data->department);
-                $stmtPae->bindParam(":city", $data->city);
+                $stmtPae->bindParam(":dept", $dept);
+                $stmtPae->bindParam(":city", $city);
 
                 // Operator Data
-                $stmtPae->bindParam(":op_name", $data->operator_name);
-                $stmtPae->bindParam(":op_nit", $data->operator_nit);
-                $stmtPae->bindParam(":op_addr", $data->operator_address);
-                $stmtPae->bindParam(":op_phone", $data->operator_phone);
-                $stmtPae->bindParam(":op_email", $data->operator_email);
+                $stmtPae->bindParam(":op_name", $opName);
+                $stmtPae->bindParam(":op_nit", $opNit);
+                $stmtPae->bindParam(":op_addr", $opAddr);
+                $stmtPae->bindParam(":op_phone", $opPhone);
+                $stmtPae->bindParam(":op_email", $opEmail);
+
+                // Logos
+                $stmtPae->bindParam(":ent_logo", $entityLogoPath);
+                $stmtPae->bindParam(":op_logo", $operatorLogoPath);
 
                 // New Contract Fields
-                $stmtPae->bindParam(":start_date", $data->start_date);
-                $stmtPae->bindParam(":end_date", $data->end_date);
-                $stmtPae->bindParam(":contract_num", $data->contract_number);
-                $stmtPae->bindParam(":contract_val", $data->contract_value);
-                $stmtPae->bindParam(":periodicity", $data->reporting_periodicity);
+                $stmtPae->bindParam(":start_date", $startDate);
+                $stmtPae->bindParam(":end_date", $endDate);
+                $stmtPae->bindParam(":contract_num", $contractNum);
+                $stmtPae->bindParam(":contract_val", $contractVal);
+                $stmtPae->bindParam(":periodicity", $periodicity);
 
                 $stmtPae->execute();
 
