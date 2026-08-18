@@ -75,13 +75,18 @@ class BeneficiaryImportController extends BaseController
      */
     public function import()
     {
+        // Increase limits for large file processing
+        set_time_limit(300);
+        ini_set('memory_limit', '256M');
+
         $pae_id = $this->getPaeIdFromToken();
         if (!$pae_id) {
             return $this->sendError("Acceso denegado.", 403);
         }
 
         if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-            return $this->sendError("Error al subir el archivo.", 400);
+            $uploadErr = $_FILES['file']['error'] ?? 'sin archivo';
+            return $this->sendError("Error al subir el archivo. Código: $uploadErr", 400);
         }
 
         $file = $_FILES['file']['tmp_name'];
@@ -126,11 +131,12 @@ class BeneficiaryImportController extends BaseController
         // Branches
         $branches = $this->getBranchMap($pae_id); // Name -> ID
 
-        $successCount = 0;
         $createdCount = 0;
         $updatedCount = 0;
         $errors = [];
         $rowNum = 1;
+        $batchSize = 100; // Commit every 100 rows to avoid long locks
+        $batchCount = 0;
 
         try {
             $this->conn->beginTransaction();
@@ -148,6 +154,12 @@ class BeneficiaryImportController extends BaseController
                 first_name = VALUES(first_name),
                 last_name1 = VALUES(last_name1)
             ");
+
+            // Prepare statements outside the loop
+            $stmtGet = $this->conn->prepare("SELECT id FROM beneficiaries WHERE pae_id = ? AND document_number = ?");
+            $stmtDelRights = $this->conn->prepare("DELETE FROM beneficiary_ration_rights WHERE beneficiary_id = ?");
+            $stmtInsertRight = $this->conn->prepare("INSERT INTO beneficiary_ration_rights (pae_id, beneficiary_id, ration_type_id) VALUES (?, ?, ?)");
+
 
             while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
                 $rowNum++;
@@ -197,9 +209,9 @@ class BeneficiaryImportController extends BaseController
                 $benId = $this->conn->lastInsertId();
                 if ($benId == 0) {
                     // Check if it was an update
-                    $stmtGet = $this->conn->prepare("SELECT id FROM beneficiaries WHERE pae_id = ? AND document_number = ?");
                     $stmtGet->execute([$pae_id, $docNum]);
                     $benId = $stmtGet->fetchColumn();
+                    $stmtGet->closeCursor(); // Close cursor to free connection
                     $updatedCount++;
                 } else {
                     $createdCount++;
@@ -218,12 +230,19 @@ class BeneficiaryImportController extends BaseController
 
                     if (!empty($rights)) {
                         // Sync Rights
-                        $this->conn->prepare("DELETE FROM beneficiary_ration_rights WHERE beneficiary_id = ?")->execute([$benId]);
-                        $stmtRight = $this->conn->prepare("INSERT INTO beneficiary_ration_rights (pae_id, beneficiary_id, ration_type_id) VALUES (?, ?, ?)");
+                        $stmtDelRights->execute([$benId]);
                         foreach ($rights as $rid) {
-                            $stmtRight->execute([$pae_id, $benId, $rid]);
+                            $stmtInsertRight->execute([$pae_id, $benId, $rid]);
                         }
                     }
+                }
+
+                // Batch commit to avoid long-running transactions and memory issues
+                $batchCount++;
+                if ($batchCount >= $batchSize) {
+                    $this->conn->commit();
+                    $this->conn->beginTransaction();
+                    $batchCount = 0;
                 }
             }
 
@@ -244,8 +263,12 @@ class BeneficiaryImportController extends BaseController
                 ]);
             }
         } catch (Exception $e) {
-            $this->conn->rollBack();
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            fclose($handle);
             $this->sendError("Error del sistema: " . $e->getMessage(), 500);
+            return;
         }
 
         fclose($handle);
