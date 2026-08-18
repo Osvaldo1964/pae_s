@@ -1342,11 +1342,28 @@ var BeneficiariesView = {
     /**
      * Open Bulk Upload Modal
      */
-    openBulkUploadModal(showUploadTab = false) {
-        // Create Modal HTML if not exists (or simpler, just use existing one but assuming we need a specific one for upload)
-        // Check if modal exists
-        if (!document.getElementById('modalBulkUpload')) {
-            const modalHtml = `
+    async openBulkUploadModal(showUploadTab = false) {
+        // Always destroy and recreate so the data dictionary reflects current data
+        const existing = document.getElementById('modalBulkUpload');
+        if (existing) {
+            const bsInstance = bootstrap.Modal.getInstance(existing);
+            if (bsInstance) bsInstance.dispose();
+            existing.remove();
+        }
+
+        // Refresh ration types and population types to ensure we have the latest data
+        try {
+            const [rationTypes, populationTypes] = await Promise.all([
+                Helper.fetchAPI('/ration-types'),
+                Helper.fetchAPI('/population-types')
+            ]);
+            this.rationTypes = rationTypes.success ? rationTypes.data : (Array.isArray(rationTypes) ? rationTypes : []);
+            this.populationTypes = populationTypes.success ? populationTypes.data : (Array.isArray(populationTypes) ? populationTypes : []);
+        } catch (e) {
+            console.warn('No se pudieron refrescar tipos de ración/población:', e);
+        }
+
+        const modalHtml = `
             <div class="modal fade" id="modalBulkUpload" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl">
                     <div class="modal-content">
@@ -1496,7 +1513,6 @@ var BeneficiariesView = {
                 </div>
             </div>`;
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-        }
 
         const modal = new bootstrap.Modal(document.getElementById('modalBulkUpload'));
         modal.show();
