@@ -601,7 +601,7 @@ var BeneficiariesView = {
             this.documentTypes = docTypes || [];
             this.ethnicGroups = ethnicGroups || [];
             this.rationTypes = rationTypes.success ? rationTypes.data : [];
-            this.populationTypes = populationTypes || [];
+            this.populationTypes = populationTypes.success ? populationTypes.data : (Array.isArray(populationTypes) ? populationTypes : []);
 
             this.populateSelect('school-id', this.schools, 'Seleccione Centro');
             this.populateSelect('doc-type', this.documentTypes, 'Seleccione Tipo');
