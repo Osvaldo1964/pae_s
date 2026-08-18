@@ -267,15 +267,11 @@ class BeneficiaryImportController extends BaseController
 
     private function getBranchMap($paeId)
     {
-        // Branches are linked to Schools, but we need a flat map for the current PAE context?? 
-        // Actually branches are global or linked to schools... 
-        // Wait, beneficiaries table has branch_id. branch_id is from school_branches.
-        // Schools might be filtered by PAE?? Usually Branches are just Branches.
-        // Assuming unique names for simplicity or better yet:
-        $stmt = $this->conn->query("SELECT name, id FROM school_branches");
-        // Warning: Duplicates possible across schools? 
-        // Ideally we should filter by schools assigned to this PAE if logic exists.
-        // For now, assuming Global Names or User knows specific name.
+        $stmt = $this->conn->prepare("SELECT b.name, b.id 
+                                       FROM school_branches b
+                                       JOIN schools s ON b.school_id = s.id 
+                                       WHERE (b.pae_id = :pae_id OR s.pae_id = :pae_id)");
+        $stmt->execute([':pae_id' => $paeId]);
         return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
 }

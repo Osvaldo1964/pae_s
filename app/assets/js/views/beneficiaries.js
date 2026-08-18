@@ -565,6 +565,12 @@ var BeneficiariesView = {
     async init() {
         Helper.loading(true, 'Cargando beneficiarios...');
         try {
+            // Reset cached arrays to avoid stale data from previous PAE
+            this.schools = [];
+            this.branches = [];
+            this.rationTypes = [];
+            this.beneficiaries = [];
+
             await Promise.all([
                 this.loadBeneficiaries(),
                 this.loadMasterData()
@@ -1391,7 +1397,10 @@ var BeneficiariesView = {
                                                             <table class="table table-sm table-striped mb-0 small">
                                                                 <thead class="table-light sticky-top"><tr><th>Nombre Punto</th><th>Centro / Institución</th></tr></thead>
                                                                 <tbody>
-                                                                    ${(this.branches || []).map(b => `<tr><td>${b.name}</td><td class="text-muted">${b.school_name}</td></tr>`).join('')}
+                                                                     ${(this.branches && this.branches.length > 0)
+                                                                         ? this.branches.map(b => `<tr><td>${b.name}</td><td class="text-muted">${b.school_name}</td></tr>`).join('')
+                                                                         : '<tr><td colspan="2" class="text-center text-muted py-3">No hay sedes registradas para este programa PAE</td></tr>'
+                                                                     }
                                                                 </tbody>
                                                             </table>
                                                         </div>
@@ -1429,7 +1438,10 @@ var BeneficiariesView = {
                                                             <table class="table table-sm table-striped mb-0 small">
                                                                 <thead class="table-light sticky-top"><tr><th>Nombre Ración</th></tr></thead>
                                                                 <tbody>
-                                                                    ${(Array.isArray(this.rationTypes) ? this.rationTypes : []).map(r => `<tr><td>${r.name}</td></tr>`).join('')}
+                                                                    ${(Array.isArray(this.rationTypes) && this.rationTypes.length > 0)
+                                                                        ? this.rationTypes.map(r => `<tr><td>${r.name}</td></tr>`).join('')
+                                                                        : '<tr><td class="text-center text-muted py-3">No hay tipos de ración registrados para este programa PAE</td></tr>'
+                                                                    }
                                                                 </tbody>
                                                             </table>
                                                         </div>
