@@ -569,6 +569,7 @@ var BeneficiariesView = {
             this.schools = [];
             this.branches = [];
             this.rationTypes = [];
+            this.populationTypes = [];
             this.beneficiaries = [];
 
             await Promise.all([
@@ -586,12 +587,13 @@ var BeneficiariesView = {
 
     async loadMasterData() {
         try {
-            const [schools, branches, docTypes, ethnicGroups, rationTypes] = await Promise.all([
+            const [schools, branches, docTypes, ethnicGroups, rationTypes, populationTypes] = await Promise.all([
                 Helper.fetchAPI('/schools'),
                 Helper.fetchAPI('/branches'),
                 Helper.fetchAPI('/beneficiarios/document_types'),
                 Helper.fetchAPI('/beneficiarios/ethnic_groups'),
-                Helper.fetchAPI('/ration-types')
+                Helper.fetchAPI('/ration-types'),
+                Helper.fetchAPI('/population-types')
             ]);
 
             this.schools = schools || [];
@@ -599,6 +601,7 @@ var BeneficiariesView = {
             this.documentTypes = docTypes || [];
             this.ethnicGroups = ethnicGroups || [];
             this.rationTypes = rationTypes.success ? rationTypes.data : [];
+            this.populationTypes = populationTypes || [];
 
             this.populateSelect('school-id', this.schools, 'Seleccione Centro');
             this.populateSelect('doc-type', this.documentTypes, 'Seleccione Tipo');
@@ -1411,7 +1414,7 @@ var BeneficiariesView = {
                                                 <div class="accordion-item">
                                                     <h2 class="accordion-header" id="headingTwo">
                                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                                            Grupos Étnicos (Usar Código)
+                                                            Grupos Étnicos SIMAT (Usar Código)
                                                         </button>
                                                     </h2>
                                                     <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionReference">
@@ -1419,7 +1422,29 @@ var BeneficiariesView = {
                                                             <table class="table table-sm table-striped mb-0 small">
                                                                 <thead class="table-light sticky-top"><tr><th>Cód</th><th>Nombre</th></tr></thead>
                                                                 <tbody>
-                                                                    ${this.ethnicGroups.map(e => `<tr><td>${e.code}</td><td>${e.name}</td></tr>`).join('')}
+                                                                    ${(this.ethnicGroups || []).map(e => `<tr><td>${e.code}</td><td>${e.name}</td></tr>`).join('')}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Población del Programa -->
+                                                <div class="accordion-item">
+                                                    <h2 class="accordion-header" id="headingPop">
+                                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePop" aria-expanded="false" aria-controls="collapsePop">
+                                                            Tipos de Población del Programa
+                                                        </button>
+                                                    </h2>
+                                                    <div id="collapsePop" class="accordion-collapse collapse" aria-labelledby="headingPop" data-bs-parent="#accordionReference">
+                                                        <div class="accordion-body p-0" style="max-height: 200px; overflow-y: auto;">
+                                                            <table class="table table-sm table-striped mb-0 small">
+                                                                <thead class="table-light sticky-top"><tr><th>Tipo Población / Enfoque</th></tr></thead>
+                                                                <tbody>
+                                                                    ${(Array.isArray(this.populationTypes) && this.populationTypes.length > 0)
+                                                                        ? this.populationTypes.map(p => `<tr><td>${p.name}</td></tr>`).join('')
+                                                                        : '<tr><td class="text-center text-muted py-3">No hay tipos de población registrados para este programa PAE</td></tr>'
+                                                                    }
                                                                 </tbody>
                                                             </table>
                                                         </div>

@@ -405,7 +405,7 @@ class BeneficiaryController extends BaseController
      */
     public function getEthnicGroups()
     {
-        $query = "SELECT * FROM ethnic_groups ORDER BY name ASC";
+        $query = "SELECT * FROM ethnic_groups ORDER BY code ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         $this->sendResponse($stmt->fetchAll(PDO::FETCH_ASSOC));
