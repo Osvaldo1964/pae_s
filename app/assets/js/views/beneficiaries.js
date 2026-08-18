@@ -821,9 +821,9 @@ var BeneficiariesView = {
         const docFields = ['doc-identidad', 'doc-sisben', 'historia-clinica', 'fotografia'];
         docFields.forEach(field => {
             const input = document.getElementById(field);
-            if(input) input.value = '';
+            if (input) input.value = '';
             const linkDiv = document.getElementById(`link-${field}`);
-            if(linkDiv) linkDiv.innerHTML = '';
+            if (linkDiv) linkDiv.innerHTML = '';
 
             const iconEl = document.getElementById(`preview-icon-${field}`);
             const imgEl = document.getElementById(`preview-img-${field}`);
@@ -906,7 +906,7 @@ var BeneficiariesView = {
             document.getElementById('is-migrant').checked = !!b.is_migrant;
             document.getElementById('medical-restrictions').value = b.medical_restrictions || '';
             document.getElementById('observations').value = b.observations || '';
-            
+
             document.getElementById('talla-zapato').value = b.talla_zapato || '';
             document.getElementById('talla-camisa').value = b.talla_camisa || '';
             document.getElementById('talla-pantalon').value = b.talla_pantalon || '';
@@ -919,7 +919,7 @@ var BeneficiariesView = {
                 const isPdf = path.toLowerCase().endsWith('.pdf');
                 const linkDiv = document.getElementById(`link-${fieldId}`);
                 if (linkDiv) linkDiv.innerHTML = `<a href="${url}" target="_blank" class="text-primary"><i class="fas fa-external-link-alt me-1"></i>Ver actual</a>`;
-                
+
                 const iconEl = document.getElementById(`preview-icon-${fieldId}`);
                 const imgEl = document.getElementById(`preview-img-${fieldId}`);
                 if (iconEl && imgEl) {
@@ -1027,20 +1027,20 @@ var BeneficiariesView = {
 
             if (res.message) {
                 const beneficiaryId = res.id || id;
-                
+
                 // Upload documents if any
                 const filesToUpload = new FormData();
                 let hasFiles = false;
-                
+
                 const dId = document.getElementById('doc-identidad').files[0];
                 if (dId) { filesToUpload.append('doc_identidad', dId); hasFiles = true; }
-                
+
                 const dSis = document.getElementById('doc-sisben').files[0];
                 if (dSis) { filesToUpload.append('doc_sisben', dSis); hasFiles = true; }
-                
+
                 const hCli = document.getElementById('historia-clinica').files[0];
                 if (hCli) { filesToUpload.append('historia_clinica', hCli); hasFiles = true; }
-                
+
                 const foto = document.getElementById('fotografia').files[0];
                 if (foto) { filesToUpload.append('fotografia', foto); hasFiles = true; }
 
@@ -1418,9 +1418,9 @@ var BeneficiariesView = {
                                                                 <thead class="table-light sticky-top"><tr><th>Nombre Punto</th><th>Centro / Institución</th></tr></thead>
                                                                 <tbody>
                                                                      ${(this.branches && this.branches.length > 0)
-                                                                         ? this.branches.map(b => `<tr><td>${b.name}</td><td class="text-muted">${b.school_name}</td></tr>`).join('')
-                                                                         : '<tr><td colspan="2" class="text-center text-muted py-3">No hay sedes registradas para este programa PAE</td></tr>'
-                                                                     }
+                ? this.branches.map(b => `<tr><td>${b.name}</td><td class="text-muted">${b.school_name}</td></tr>`).join('')
+                : '<tr><td colspan="2" class="text-center text-muted py-3">No hay sedes registradas para este programa PAE</td></tr>'
+            }
                                                                 </tbody>
                                                             </table>
                                                         </div>
@@ -1459,9 +1459,9 @@ var BeneficiariesView = {
                                                                 <thead class="table-light sticky-top"><tr><th>Tipo Población / Enfoque</th></tr></thead>
                                                                 <tbody>
                                                                     ${(Array.isArray(this.populationTypes) && this.populationTypes.length > 0)
-                                                                        ? this.populationTypes.map(p => `<tr><td>${p.name}</td></tr>`).join('')
-                                                                        : '<tr><td class="text-center text-muted py-3">No hay tipos de población registrados para este programa PAE</td></tr>'
-                                                                    }
+                ? this.populationTypes.map(p => `<tr><td>${p.name}</td></tr>`).join('')
+                : '<tr><td class="text-center text-muted py-3">No hay tipos de población registrados para este programa PAE</td></tr>'
+            }
                                                                 </tbody>
                                                             </table>
                                                         </div>
@@ -1481,9 +1481,9 @@ var BeneficiariesView = {
                                                                 <thead class="table-light sticky-top"><tr><th>Nombre Ración</th></tr></thead>
                                                                 <tbody>
                                                                     ${(Array.isArray(this.rationTypes) && this.rationTypes.length > 0)
-                                                                        ? this.rationTypes.map(r => `<tr><td>${r.name}</td></tr>`).join('')
-                                                                        : '<tr><td class="text-center text-muted py-3">No hay tipos de ración registrados para este programa PAE</td></tr>'
-                                                                    }
+                ? this.rationTypes.map(r => `<tr><td>${r.name}</td></tr>`).join('')
+                : '<tr><td class="text-center text-muted py-3">No hay tipos de ración registrados para este programa PAE</td></tr>'
+            }
                                                                 </tbody>
                                                             </table>
                                                         </div>
@@ -1512,7 +1512,7 @@ var BeneficiariesView = {
                     </div>
                 </div>
             </div>`;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
 
         const modal = new bootstrap.Modal(document.getElementById('modalBulkUpload'));
         modal.show();
@@ -1555,8 +1555,17 @@ var BeneficiariesView = {
                 body: formData
             });
 
-            const res = await response.json();
+            const rawText = await response.text();
             Helper.loading(false);
+
+            let res;
+            try {
+                res = JSON.parse(rawText);
+            } catch (jsonErr) {
+                console.error('Respuesta del servidor (no JSON):', rawText);
+                Helper.alert('error', 'El servidor devolvió una respuesta inesperada:\n\n' + rawText.substring(0, 400));
+                return;
+            }
 
             if (response.ok && (res.status === 'success' || !res.error)) {
                 const results = res.details || {};
@@ -1629,9 +1638,9 @@ var BeneficiariesView = {
         const file = inputElement.files[0];
         const iconEl = document.getElementById(`preview-icon-${fieldId}`);
         const imgEl = document.getElementById(`preview-img-${fieldId}`);
-        
+
         if (!iconEl || !imgEl) return;
-        
+
         if (!file) {
             iconEl.className = 'fas fa-file-alt fa-2x text-muted';
             iconEl.style.display = 'block';
@@ -1642,7 +1651,7 @@ var BeneficiariesView = {
 
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 imgEl.src = e.target.result;
                 imgEl.style.display = 'block';
                 iconEl.style.display = 'none';
