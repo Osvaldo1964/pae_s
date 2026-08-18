@@ -164,6 +164,12 @@ class BeneficiaryImportController extends BaseController
             while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
                 $rowNum++;
 
+                // Ensure UTF-8 encoding for all elements in the row
+                $row = array_map(function($val) {
+                    // Convert from ISO-8859-1/Windows-1252 to UTF-8 if it's not already valid UTF-8
+                    return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'ISO-8859-1');
+                }, $row);
+
                 // Extract data using map
                 $docType = strtoupper(trim($row[$map['tipo_documento']] ?? ''));
                 $docNum = trim($row[$map['numero_documento']] ?? '');
