@@ -159,6 +159,8 @@ class BeneficiaryImportController extends BaseController
             $stmtGet = $this->conn->prepare("SELECT id FROM beneficiaries WHERE pae_id = ? AND document_number = ?");
             $stmtDelRights = $this->conn->prepare("DELETE FROM beneficiary_ration_rights WHERE beneficiary_id = ?");
             $stmtInsertRight = $this->conn->prepare("INSERT INTO beneficiary_ration_rights (pae_id, beneficiary_id, ration_type_id) VALUES (?, ?, ?)");
+            $stmtCheckService = $this->conn->prepare("SELECT 1 FROM beneficiary_services WHERE pae_id = ? AND beneficiary_id = ? AND service_id = 1");
+            $stmtInsertService = $this->conn->prepare("INSERT INTO beneficiary_services (pae_id, beneficiary_id, service_id) VALUES (?, ?, 1)");
 
 
             while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
@@ -239,6 +241,12 @@ class BeneficiaryImportController extends BaseController
                         $stmtDelRights->execute([$benId]);
                         foreach ($rights as $rid) {
                             $stmtInsertRight->execute([$pae_id, $benId, $rid]);
+                        }
+                        
+                        // Force Assign ALIMENTACIÓN service (ID 1) if not exists
+                        $stmtCheckService->execute([$pae_id, $benId]);
+                        if ($stmtCheckService->rowCount() == 0) {
+                            $stmtInsertService->execute([$pae_id, $benId]);
                         }
                     }
                 }
