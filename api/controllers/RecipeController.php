@@ -97,8 +97,12 @@ class RecipeController
                         $groupedItems[$iid]['quantities'][$it['age_group']] = $it['quantity'];
                     }
                     $recipe['items'] = array_values($groupedItems);
+                }
+            }
 
-                    // Fetch detailed nutrition groups
+            // Always fetch nutrition_groups for all recipes
+            if (count($recipes) > 0) {
+                foreach ($recipes as &$recipe) {
                     $queryNut = "SELECT age_group, total_calories as calories, total_proteins as proteins, total_carbohydrates as carbohydrates, total_fats as fats, total_calcium as calcium, total_iron as iron, total_sodium as sodium 
                                  FROM recipe_nutrition WHERE recipe_id = :rid";
                     $stmtNut = $this->conn->prepare($queryNut);
