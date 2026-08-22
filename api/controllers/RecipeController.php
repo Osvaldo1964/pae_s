@@ -97,6 +97,26 @@ class RecipeController
                         $groupedItems[$iid]['quantities'][$it['age_group']] = $it['quantity'];
                     }
                     $recipe['items'] = array_values($groupedItems);
+
+                    // Fetch detailed nutrition groups
+                    $queryNut = "SELECT age_group, total_calories as calories, total_proteins as proteins, total_carbohydrates as carbohydrates, total_fats as fats, total_calcium as calcium, total_iron as iron, total_sodium as sodium 
+                                 FROM recipe_nutrition WHERE recipe_id = :rid";
+                    $stmtNut = $this->conn->prepare($queryNut);
+                    $stmtNut->execute([':rid' => $recipe['id']]);
+                    
+                    $nutritionData = ['PREESCOLAR' => [], 'PRIMARIA_A' => [], 'PRIMARIA_B' => [], 'SECUNDARIA' => [], 'GENERAL' => []];
+                    $emptyGroup = ['calories'=>0, 'proteins'=>0, 'carbohydrates'=>0, 'fats'=>0, 'calcium'=>0, 'iron'=>0, 'sodium'=>0];
+                    
+                    while($n = $stmtNut->fetch(PDO::FETCH_ASSOC)){
+                        $nutritionData[$n['age_group']] = $n;
+                    }
+                    
+                    // Fill empty groups with 0 if missing
+                    foreach($nutritionData as $g => $data) {
+                        if(empty($data)) $nutritionData[$g] = $emptyGroup;
+                    }
+                    
+                    $recipe['nutrition_groups'] = $nutritionData;
                 }
             }
 
@@ -239,7 +259,10 @@ class RecipeController
                         SUM(ri.quantity * i.calories / 100) as calories,
                         SUM(ri.quantity * i.proteins / 100) as proteins,
                         SUM(ri.quantity * i.carbohydrates / 100) as carbohydrates,
-                        SUM(ri.quantity * i.fats / 100) as fats
+                        SUM(ri.quantity * i.fats / 100) as fats,
+                        SUM(ri.quantity * i.calcium / 100) as calcium,
+                        SUM(ri.quantity * i.iron / 100) as iron,
+                        SUM(ri.quantity * i.sodium / 100) as sodium
                       FROM recipe_items ri
                       JOIN items i ON ri.item_id = i.id
                       WHERE ri.recipe_id = :id AND ri.age_group = :group";
@@ -249,10 +272,11 @@ class RecipeController
             $totals = $stmtCalc->fetch(PDO::FETCH_ASSOC);
 
             if ($totals) {
-                $queryUpd = "INSERT INTO recipe_nutrition (recipe_id, age_group, total_calories, total_proteins, total_carbohydrates, total_fats)
-                             VALUES (:id, :group, :cal, :pro, :car, :fat)
+                $queryUpd = "INSERT INTO recipe_nutrition (recipe_id, age_group, total_calories, total_proteins, total_carbohydrates, total_fats, total_calcium, total_iron, total_sodium)
+                             VALUES (:id, :group, :cal, :pro, :car, :fat, :calcium, :iron, :sodium)
                              ON DUPLICATE KEY UPDATE 
-                             total_calories = :cal2, total_proteins = :pro2, total_carbohydrates = :car2, total_fats = :fat2";
+                             total_calories = :cal2, total_proteins = :pro2, total_carbohydrates = :car2, total_fats = :fat2,
+                             total_calcium = :calcium2, total_iron = :iron2, total_sodium = :sodium2";
                 $stmtUpd = $this->conn->prepare($queryUpd);
                 $stmtUpd->execute([
                     ':id' => $recipe_id,
@@ -261,10 +285,16 @@ class RecipeController
                     ':pro' => $totals['proteins'] ?? 0,
                     ':car' => $totals['carbohydrates'] ?? 0,
                     ':fat' => $totals['fats'] ?? 0,
+                    ':calcium' => $totals['calcium'] ?? 0,
+                    ':iron' => $totals['iron'] ?? 0,
+                    ':sodium' => $totals['sodium'] ?? 0,
                     ':cal2' => $totals['calories'] ?? 0,
                     ':pro2' => $totals['proteins'] ?? 0,
                     ':car2' => $totals['carbohydrates'] ?? 0,
-                    ':fat2' => $totals['fats'] ?? 0
+                    ':fat2' => $totals['fats'] ?? 0,
+                    ':calcium2' => $totals['calcium'] ?? 0,
+                    ':iron2' => $totals['iron'] ?? 0,
+                    ':sodium2' => $totals['sodium'] ?? 0
                 ]);
             }
         }

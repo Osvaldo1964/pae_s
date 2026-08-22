@@ -102,20 +102,70 @@ window.RecetarioView = {
                         </div>
                         <p class="card-text text-muted mb-2 line-clamp-2" style="font-size: 0.75rem; min-height: 2.2em;">${r.description || 'Sin descripción'}</p>
                         
-                        <div class="row g-0 text-center bg-light rounded p-2 mb-3 border">
-                            <div class="col-4 border-end">
-                                <div class="text-xs text-uppercase fw-bold text-muted" style="font-size: 0.6rem;">Calorías</div>
-                                <div class="fw-bold mb-0 text-primary small">${Math.round(r.total_calories)} <small style="font-size: 0.5rem;">kcal</small></div>
-                            </div>
-                            <div class="col-4 border-end">
-                                <div class="text-xs text-uppercase fw-bold text-muted" style="font-size: 0.6rem;">Proteínas</div>
-                                <div class="fw-bold mb-0 text-success small">${parseFloat(r.total_proteins).toFixed(1)} <small style="font-size: 0.5rem;">g</small></div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-xs text-uppercase fw-bold text-muted" style="font-size: 0.6rem;">Carbos</div>
-                                <div class="fw-bold mb-0 text-info small">${parseFloat(r.total_carbohydrates).toFixed(1)} <small style="font-size: 0.5rem;">g</small></div>
-                            </div>
+                        ${r.nutrition_groups ? `
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-bordered table-striped mb-0 text-center" style="font-size: 0.6rem;">
+                                <thead class="bg-light text-muted">
+                                    <tr>
+                                        <th class="text-start">Grupo</th>
+                                        <th title="Calorías">Kcal</th>
+                                        <th title="Proteínas (g)">Prot</th>
+                                        <th title="Carbohidratos (g)">Carb</th>
+                                        <th title="Calcio (mg)">Ca</th>
+                                        <th title="Hierro (mg)">Fe</th>
+                                        <th title="Sodio (mg)">Na</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="text-start fw-bold">PREESC</td>
+                                        <td>${Math.round(r.nutrition_groups.PREESCOLAR.calories)}</td>
+                                        <td class="text-success">${parseFloat(r.nutrition_groups.PREESCOLAR.proteins).toFixed(1)}</td>
+                                        <td class="text-info">${parseFloat(r.nutrition_groups.PREESCOLAR.carbohydrates).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PREESCOLAR.calcium).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PREESCOLAR.iron).toFixed(1)}</td>
+                                        <td class="text-danger">${parseFloat(r.nutrition_groups.PREESCOLAR.sodium).toFixed(0)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">PRIM A</td>
+                                        <td>${Math.round(r.nutrition_groups.PRIMARIA_A.calories)}</td>
+                                        <td class="text-success">${parseFloat(r.nutrition_groups.PRIMARIA_A.proteins).toFixed(1)}</td>
+                                        <td class="text-info">${parseFloat(r.nutrition_groups.PRIMARIA_A.carbohydrates).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PRIMARIA_A.calcium).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PRIMARIA_A.iron).toFixed(1)}</td>
+                                        <td class="text-danger">${parseFloat(r.nutrition_groups.PRIMARIA_A.sodium).toFixed(0)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">PRIM B</td>
+                                        <td>${Math.round(r.nutrition_groups.PRIMARIA_B.calories)}</td>
+                                        <td class="text-success">${parseFloat(r.nutrition_groups.PRIMARIA_B.proteins).toFixed(1)}</td>
+                                        <td class="text-info">${parseFloat(r.nutrition_groups.PRIMARIA_B.carbohydrates).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PRIMARIA_B.calcium).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.PRIMARIA_B.iron).toFixed(1)}</td>
+                                        <td class="text-danger">${parseFloat(r.nutrition_groups.PRIMARIA_B.sodium).toFixed(0)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">SECUND</td>
+                                        <td>${Math.round(r.nutrition_groups.SECUNDARIA.calories)}</td>
+                                        <td class="text-success">${parseFloat(r.nutrition_groups.SECUNDARIA.proteins).toFixed(1)}</td>
+                                        <td class="text-info">${parseFloat(r.nutrition_groups.SECUNDARIA.carbohydrates).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.SECUNDARIA.calcium).toFixed(1)}</td>
+                                        <td>${parseFloat(r.nutrition_groups.SECUNDARIA.iron).toFixed(1)}</td>
+                                        <td class="text-danger">${parseFloat(r.nutrition_groups.SECUNDARIA.sodium).toFixed(0)}</td>
+                                    </tr>
+                                    <tr class="bg-light">
+                                        <td class="text-start fw-bold text-primary">GRAL</td>
+                                        <td class="fw-bold">${Math.round(r.nutrition_groups.GENERAL.calories)}</td>
+                                        <td class="text-success fw-bold">${parseFloat(r.nutrition_groups.GENERAL.proteins).toFixed(1)}</td>
+                                        <td class="text-info fw-bold">${parseFloat(r.nutrition_groups.GENERAL.carbohydrates).toFixed(1)}</td>
+                                        <td class="fw-bold">${parseFloat(r.nutrition_groups.GENERAL.calcium).toFixed(1)}</td>
+                                        <td class="fw-bold">${parseFloat(r.nutrition_groups.GENERAL.iron).toFixed(1)}</td>
+                                        <td class="text-danger fw-bold">${parseFloat(r.nutrition_groups.GENERAL.sodium).toFixed(0)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
+                        ` : ''}
 
                         <button class="btn btn-outline-primary btn-xs w-100 fw-bold rounded-pill" style="font-size: 0.7rem; padding: 0.25rem;" onclick="RecetarioView.viewRecipe(${r.id})">
                             <i class="fas fa-eye me-1"></i> Ver Composición
@@ -142,10 +192,35 @@ window.RecetarioView = {
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body p-0">
-                                <div class="p-3 bg-light border-bottom d-flex justify-content-around text-center">
-                                    <div><small class="text-muted d-block">Calorías</small><strong>${Math.round(r.total_calories)} kcal</strong></div>
-                                    <div><small class="text-muted d-block">Proteínas</small><strong>${r.total_proteins}g</strong></div>
-                                    <div><small class="text-muted d-block">Carbohidratos</small><strong>${r.total_carbohydrates}g</strong></div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered text-center mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>Grupo</th>
+                                                <th>Calorías</th>
+                                                <th>Proteínas</th>
+                                                <th>Carbohidratos</th>
+                                                <th>Grasas</th>
+                                                <th>Calcio</th>
+                                                <th>Hierro</th>
+                                                <th>Sodio</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${r.nutrition_groups ? ['PREESCOLAR', 'PRIMARIA_A', 'PRIMARIA_B', 'SECUNDARIA', 'GENERAL'].map(g => `
+                                            <tr>
+                                                <td class="fw-bold text-start">${g}</td>
+                                                <td>${Math.round(r.nutrition_groups[g].calories)} kcal</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].proteins).toFixed(1)} g</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].carbohydrates).toFixed(1)} g</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].fats).toFixed(1)} g</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].calcium).toFixed(1)} mg</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].iron).toFixed(1)} mg</td>
+                                                <td>${parseFloat(r.nutrition_groups[g].sodium).toFixed(0)} mg</td>
+                                            </tr>
+                                            `).join('') : ''}
+                                        </tbody>
+                                    </table>
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-hover mb-0" style="font-size: 0.85rem;">
