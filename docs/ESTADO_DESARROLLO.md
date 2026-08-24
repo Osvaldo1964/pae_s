@@ -55,12 +55,13 @@
 - [x] Configuración de logos de operador y entidad territorial
 
 ### 6. Módulo de Beneficiarios (Estudiantes) ✅ ⭐ v1.9.0
-- [x] **Backend:** `BeneficiaryController.php` con CRUD completo
+- [x] **Backend:** `BeneficiaryController.php` con CRUD completo y **Server-Side Processing (DataTables)**
 - [x] **Frontend:** Formulario multi-pestaña (4 secciones):
   - Identificación (Documento, nombres, etnia, SISBEN)
   - Matrícula (Colegio, sede, grado, jornada)
   - Contacto (Dirección, teléfono, acudiente)
   - Salud y Otros (Discapacidad, población víctima/migrante)
+- [x] **Optimización de Rendimiento Extremo:** Manejo eficiente de +25,000 registros mediante paginación del lado del servidor (`datatable`).
 - [x] **Base de Datos:**
   - Tablas maestras: `document_types`, `ethnic_groups`
   - Tabla principal: `beneficiaries` (30+ campos)
@@ -72,6 +73,7 @@
   - Frontend: Asignación múltiple en formulario
 - [x] **Carga Masiva (Bulk Upload):**
   - **Backend Inteligente:** Detección automática de delimitador CSV (`;` o `,`)
+  - **Actualización Automática:** Reactivación automática de estudiantes que estaban INACTIVOS al detectarlos en una nueva carga.
   - **Validación Fila por Fila:** Integridad referencial de Sedes y Tipos de Documento
   - **Interfaz Simplificada:** Dashboard de 4 tarjetas
   - **Diccionario de Datos Integrado:** Visualización de códigos válidos para carga
@@ -110,12 +112,13 @@
 - [x] **Lógica de Perecederos:** Campo explícito `is_perishable` para diferenciar logística
 
 ### 8. Módulo de Cocina - Recetario Maestro ✅
-- [x] **Backend:** `RecipeController.php` con CRUD y motor de recalculación
-- [x] **Base de Datos:** Estructura de recetas, ingredientes patrón y plantillas de ciclo
-- [x] **Frontend:** Diseño de tarjetas compactas (4 columnas) con indicadores nutricionales
-- [x] **Cálculos:** Motor automático basado en 100g de ingrediente (ICBF)
-- [x] **UX:** Scroll interno y modales dinámicos para gestión a gran escala
-- [x] **Bug Fixes:** Corrección de redirecciones y carga de ingredientes en edición
+- [x] **Backend:** `RecipeController.php` con CRUD y motor de recalculación avanzado.
+- [x] **Base de Datos:** Estructura de recetas, ingredientes patrón y plantillas de ciclo. Migración exitosa de `recipe_nutrition` para ampliar soporte nutricional.
+- [x] **Frontend:** Diseño de tarjetas compactas (4 columnas) con indicadores nutricionales.
+- [x] **Matriz Nutricional 5x6:** Cálculo y despliegue de 6 nutrientes clave (Energía, Proteínas, Grasas, Calcio, Hierro, Sodio) cruzados transversalmente contra 5 grupos de edad (1-3, 4-8, 9-13, 14-17, 18+).
+- [x] **Cálculos:** Motor automático basado en 100g de ingrediente (ICBF) con despliegue de porcentajes de adecuación.
+- [x] **UX:** Scroll interno y modales dinámicos para gestión a gran escala.
+- [x] **Bug Fixes:** Corrección de redirecciones y carga de ingredientes en edición.
 
 ### 9. Módulo de Minutas y Ciclos ✅
 - [x] **Backend:** `CycleTemplateController.php` y `MenuCycleController.php`

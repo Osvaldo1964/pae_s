@@ -77,8 +77,9 @@ Se ha implementado el **Módulo de Cocina** completo siguiendo la **Resolución 
 
 **Backend API (`api/controllers/RecipeController.php`):**
 - CRUD completo (`index`, `show`, `store`, `update`, `delete`).
-- **Motor de Recalculación Nutricional:** Suma automática de nutrientes (calorías, proteínas, carbohidratos, grasas) basada en ingredientes (base 100g).
-- Auto-corrección de datos "viva" al consultar la receta.
+- **Motor de Recalculación Nutricional (Matriz 5x6):** La arquitectura actualiza transversalmente el aporte nutricional de cada plato frente a 5 grupos etáreos (1-3, 4-8, 9-13, 14-17, 18+ años) y 6 nutrientes de alto interés (Energía, Proteínas, Grasas, Calcio, Hierro, Sodio).
+- Suma automática de aportes basados en las tablas de composición de alimentos (base 100g).
+- Auto-corrección de datos "viva" al consultar la receta (los porcentajes de cumplimiento o déficit se recalculan al vuelo).
 
 **Frontend (`app/assets/js/views/recetario.js`):**
 - **Interfaz Compacta:** Grid de 4 columnas con fuentes optimizadas.

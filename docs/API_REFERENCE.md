@@ -374,19 +374,33 @@ Authorization: Bearer {token}
 
 ## 👶 Beneficiarios
 
-### GET /beneficiarios
+### POST /beneficiarios/datatable
 
-Listar todos los beneficiarios del programa actual.
+Listar beneficiarios del programa actual de manera paginada (Server-Side Processing DataTables).
 
-**Query Parameters:**
-- `search` (opcional) - Buscar por nombre o documento
-- `school_id` (opcional) - Filtrar por colegio
-- `grade` (opcional) - Filtrar por grado
+**Headers:**
+```http
+Authorization: Bearer {token}
+```
+
+**Body (JSON o Form-Data):**
+```json
+{
+  "draw": 1,
+  "start": 0,
+  "length": 10,
+  "search": { "value": "PEDRO" },
+  "school_id": "",
+  "grade": ""
+}
+```
 
 **Response (200 OK):**
 ```json
 {
-  "success": true,
+  "draw": 1,
+  "recordsTotal": 25000,
+  "recordsFiltered": 1,
   "data": [
     {
       "id": 10,
@@ -397,6 +411,32 @@ Listar todos los beneficiarios del programa actual.
       "status": "ACTIVO"
     }
   ]
+}
+```
+
+---
+
+### GET /beneficiarios/{id}
+
+Obtener el registro completo de un beneficiario específico.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "first_name": "PEDRO",
+    "last_name1": "PÉREZ",
+    "document_number": "12345678",
+    "status": "ACTIVO",
+    "data_authorization": 1
+  }
 }
 ```
 

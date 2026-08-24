@@ -16,6 +16,7 @@
 - ✅ Ítems (Gestión de insumos con info nutricional y alérgenos)
   - ✅ **Nuevo:** Lógica de Perecederos (Iconografía 🕒/❄️ en Stock e Ítems).
 - ✅ Recetario Maestro (Estandarización de platos base)
+  - ✅ **Nuevo:** Matriz Nutricional 5x6 (5 rangos de edad, 6 macronutrientes). Cálculo y recálculo dinámico.
 - ✅ Tipos de Ración (Configuración de momentos de consumo)
 - ✅ Minutas y Ciclos (Planeación flexible y modular)
   - ✅ **Selector Granular:** Calendario interactivo para marcar/desmarcar días específicos.
@@ -32,10 +33,12 @@
   - ✅ **Tipos de Población:** Gestión de grupos (Indígena, Afro, etc.) vinculados a raciones.
 - ✅ **Carga Masiva Inteligente:**
   - ✅ Importación desde Excel/CSV con detección automática de separadores.
+  - ✅ **Auto-Activación:** Reactivación automática de estados (INACTIVO -> ACTIVO) en nuevas cargas.
   - ✅ Dashboard simplificado (4 tarjetas) con diccionario de datos integrado.
+- ✅ **Optimización de Rendimiento Extremo:** Implementación de *Server-Side Processing* para DataTables, garantizando carga instantánea de +25,000 registros sin bloqueos del navegador.
 - ✅ **Carnetización Digital:** Generación de carnet con QR (`PAE:ID:DOC`).
-  - *Refinamiento:* Layout optimizado para evitar cortes en impresión.
-- ✅ **Corrección (Hotfix):** Filtro por grado optimizado para servidores Linux.
+  - *Refinamiento:* Layout optimizado para evitar cortes en impresión y consultas API directas.
+- ✅ **Corrección (Hotfix):** Filtro por grado optimizado para servidores Linux y ajuste de anchos de columna dinámicos.
 
 ### 5. **Operación / Reportes** ✅ ⭐ FASE COMPLETADA
 - ✅ **Almacén:** Inventario actual y movimientos de entradas/salidas.
