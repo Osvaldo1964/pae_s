@@ -66,6 +66,129 @@ class BeneficiaryController extends BaseController
     }
 
     /**
+     * DataTables Server-Side Processing
+     */
+    public function datatable()
+    {
+        $pae_id = $this->getPaeIdFromToken();
+        if (!$pae_id) {
+            echo json_encode(['error' => 'Acceso denegado.']); return;
+        }
+
+        $input = json_decode(file_get_contents("php://input"), true) ?: $_POST;
+
+        $draw = isset($input['draw']) ? intval($input['draw']) : 1;
+        $start = isset($input['start']) ? intval($input['start']) : 0;
+        $length = isset($input['length']) ? intval($input['length']) : 10;
+        $searchValue = isset($input['search']['value']) ? $input['search']['value'] : '';
+
+        // Custom filters
+        $filterSchool = isset($input['school_id']) ? $input['school_id'] : '';
+        $filterGrade = isset($input['grade']) ? $input['grade'] : '';
+
+        $baseQuery = " FROM " . $this->table_name . " b
+                  LEFT JOIN school_branches br ON b.branch_id = br.id
+                  LEFT JOIN schools s ON br.school_id = s.id
+                  LEFT JOIN document_types dt ON b.document_type_id = dt.id
+                  LEFT JOIN pae_ration_types rt ON b.ration_type_id = rt.id
+                  WHERE b.pae_id = :pae_id";
+
+        $params = [':pae_id' => $pae_id];
+
+        if (!empty($searchValue)) {
+            $baseQuery .= " AND (b.document_number LIKE :search OR b.first_name LIKE :search OR b.last_name1 LIKE :search OR b.last_name2 LIKE :search OR b.second_name LIKE :search)";
+            $params[':search'] = "%{$searchValue}%";
+        }
+
+        if (!empty($filterSchool)) {
+            $baseQuery .= " AND s.id = :school_id";
+            $params[':school_id'] = $filterSchool;
+        }
+
+        if (!empty($filterGrade)) {
+            $baseQuery .= " AND b.grade = :grade";
+            $params[':grade'] = $filterGrade;
+        }
+
+        // Count total records filtered
+        $stmtCount = $this->conn->prepare("SELECT COUNT(b.id) " . $baseQuery);
+        $stmtCount->execute($params);
+        $recordsFiltered = $stmtCount->fetchColumn();
+
+        // Count total records overall
+        $stmtTotal = $this->conn->prepare("SELECT COUNT(id) FROM " . $this->table_name . " WHERE pae_id = ?");
+        $stmtTotal->execute([$pae_id]);
+        $recordsTotal = $stmtTotal->fetchColumn();
+
+        // Select Data
+        $selectQuery = "SELECT b.id, b.document_number, b.first_name, b.second_name, b.last_name1, b.last_name2, b.grade, b.group_name, b.shift, b.status,
+                        dt.name as document_type_name,
+                        s.name as school_name,
+                        br.name as branch_name,
+                        rt.name as ration_type_name,
+                        (SELECT GROUP_CONCAT(prt.name SEPARATOR ', ') 
+                         FROM beneficiary_ration_rights brr 
+                         JOIN pae_ration_types prt ON brr.ration_type_id = prt.id 
+                         WHERE brr.beneficiary_id = b.id) as ration_rights_names " . $baseQuery . " ORDER BY b.last_name1 ASC, b.first_name ASC LIMIT $start, $length";
+
+        $stmtData = $this->conn->prepare($selectQuery);
+        $stmtData->execute($params);
+        $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            "draw" => $draw,
+            "recordsTotal" => intval($recordsTotal),
+            "recordsFiltered" => intval($recordsFiltered),
+            "data" => $data
+        ]);
+    }
+
+    /**
+     * Get a single beneficiary
+     */
+    public function show($id)
+    {
+        $pae_id = $this->getPaeIdFromToken();
+        if (!$pae_id) return $this->sendError("Acceso denegado.", 403);
+
+        $query = "SELECT b.*, 
+                         dt.name as document_type_name,
+                         s.name as school_name,
+                         s.id as school_id,
+                         br.name as branch_name,
+                         eg.name as ethnic_group_name,
+                         rt.name as ration_type_name,
+                         pm.name as modality_name,
+                         png.name as nutritional_group_name,
+                         (SELECT GROUP_CONCAT(brr.ration_type_id) 
+                          FROM beneficiary_ration_rights brr 
+                          WHERE brr.beneficiary_id = b.id) as ration_rights_ids,
+                         (SELECT GROUP_CONCAT(bs.service_id) 
+                          FROM beneficiary_services bs 
+                          WHERE bs.beneficiary_id = b.id) as service_ids
+                  FROM " . $this->table_name . " b
+                  LEFT JOIN school_branches br ON b.branch_id = br.id
+                  LEFT JOIN schools s ON br.school_id = s.id
+                  LEFT JOIN document_types dt ON b.document_type_id = dt.id
+                  LEFT JOIN ethnic_groups eg ON b.ethnic_group_id = eg.id
+                  LEFT JOIN pae_ration_types rt ON b.ration_type_id = rt.id
+                  LEFT JOIN pae_modalities pm ON b.modality_id = pm.id
+                  LEFT JOIN pae_nutritional_groups png ON b.nutritional_group_id = png.id
+                  WHERE b.id = :id AND b.pae_id = :pae_id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':id' => $id, ':pae_id' => $pae_id]);
+        $b = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$b) return $this->sendError("Beneficiario no encontrado.", 404);
+
+        $b['ration_rights_ids'] = $b['ration_rights_ids'] ? array_map('intval', explode(',', $b['ration_rights_ids'])) : [];
+        $b['service_ids'] = $b['service_ids'] ? array_map('intval', explode(',', $b['service_ids'])) : [];
+
+        $this->sendResponse($b);
+    }
+
+    /**
      * Create a new beneficiary
      */
     public function create()

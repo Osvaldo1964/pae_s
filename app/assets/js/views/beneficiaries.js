@@ -719,90 +719,131 @@ var BeneficiariesView = {
     },
 
     async loadBeneficiaries() {
-        try {
-            const data = await Helper.fetchAPI('/beneficiarios');
-            this.beneficiaries = Array.isArray(data) ? data : [];
-            this.renderTable();
-        } catch (err) {
-            console.error(err);
-        }
+        this.renderTable();
     },
 
     renderTable() {
-        const tbody = document.getElementById('beneficiaries-table-body');
-        if (!tbody) return;
-
-        const htmlRows = this.beneficiaries.map(b => {
-            const statusClass = b.status === 'ACTIVO' ? 'bg-success' : 'bg-danger';
-            const fullName = `${b.last_name1} ${b.last_name2 || ''}`.trim();
-            const firstNames = `${b.first_name} ${b.second_name || ''}`.trim();
-
-            return `
-                <tr>
-                    <td>
-                        <small class="text-muted d-block">${b.document_type_name || 'DOC'}</small>
-                        <span class="fw-bold">${b.document_number}</span>
-                    </td>
-                    <td>
-                        <div class="fw-bold text-primary">${fullName}</div>
-                        <div>${firstNames}</div>
-                    </td>
-                    <td>
-                        <div class="text-truncate" style="max-width: 250px;">
-                            <i class="fas fa-university me-1 text-muted small"></i><strong>${b.school_name || 'N/A'}</strong><br>
-                            <span class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i>${b.branch_name || 'N/A'}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="badge bg-light text-dark border">${b.grade || ''}°</span>
-                        <span class="badge bg-light text-dark border">${b.group_name || 'N/A'}</span>
-                        <br><small class="text-muted">${b.shift || ''}</small>
-                        <br><span class="badge bg-primary-light text-primary border" style="font-size: 0.65rem; white-space: normal; text-align: left;">${b.ration_rights_names || b.ration_type_name || 'Sin Asignar'}</span>
-                    </td>
-                    <td><span class="badge ${statusClass}">${b.status || 'ACTIVO'}</span></td>
-                    <td class="text-end">
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-info" title="Generar Carnet" onclick="BeneficiariesView.generateCarnet(${b.id})">
-                                <i class="fas fa-id-badge"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-primary" title="Editar" onclick="BeneficiariesView.openModal(${b.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="BeneficiariesView.delete(${b.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-
-        // Initialize DataTable or update existing
         if ($.fn.DataTable.isDataTable('#beneficiariesTable')) {
-            const table = $('#beneficiariesTable').DataTable();
-            table.clear();
-            if (this.beneficiaries.length > 0) {
-                // Create parsed nodes to safely add to DataTable
-                const fakeBody = document.createElement('tbody');
-                fakeBody.innerHTML = htmlRows.join('');
-                table.rows.add(Array.from(fakeBody.children));
+            $('#beneficiariesTable').DataTable().ajax.reload(null, false);
+            return;
+        }
+
+        $('#beneficiariesTable').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: Config.API_URL + '/beneficiarios/datatable',
+                type: 'POST',
+                beforeSend: function (request) {
+                    request.setRequestHeader("Authorization", "Bearer " + Config.getToken());
+                },
+                data: function(d) {
+                    d.school_id = document.getElementById('filterSchool') ? document.getElementById('filterSchool').value : '';
+                    d.grade = document.getElementById('filterGrade') ? document.getElementById('filterGrade').value : '';
+                    d.search.value = document.getElementById('searchBeneficiary') ? document.getElementById('searchBeneficiary').value : '';
+                }
+            },
+            dom: '<"row"<"col-sm-12"t>><"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            searching: true,
+            autoWidth: false,
+            columns: [
+                {
+                    data: null,
+                    width: '15%',
+                    render: function(data, type, row) {
+                        return `<small class="text-muted d-block">${row.document_type_name || 'DOC'}</small>
+                                <span class="fw-bold">${row.document_number}</span>`;
+                    }
+                },
+                {
+                    data: null,
+                    width: '20%',
+                    render: function(data, type, row) {
+                        const fullName = `${row.last_name1} ${row.last_name2 || ''}`.trim();
+                        const firstNames = `${row.first_name} ${row.second_name || ''}`.trim();
+                        return `<div class="fw-bold text-primary">${fullName}</div><div>${firstNames}</div>`;
+                    }
+                },
+                {
+                    data: null,
+                    width: '25%',
+                    render: function(data, type, row) {
+                        return `<div class="text-truncate" style="max-width: 250px;">
+                                    <i class="fas fa-university me-1 text-muted small"></i><strong>${row.school_name || 'N/A'}</strong><br>
+                                    <span class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i>${row.branch_name || 'N/A'}</span>
+                                </div>`;
+                    }
+                },
+                {
+                    data: null,
+                    width: '15%',
+                    render: function(data, type, row) {
+                        return `<span class="badge bg-light text-dark border">${row.grade || ''}°</span>
+                                <span class="badge bg-light text-dark border">${row.group_name || 'N/A'}</span>
+                                <br><small class="text-muted">${row.shift || ''}</small>
+                                <br><span class="badge bg-primary-light text-primary border" style="font-size: 0.65rem; white-space: normal; text-align: left;">${row.ration_rights_names || row.ration_type_name || 'Sin Asignar'}</span>`;
+                    }
+                },
+                {
+                    data: 'status',
+                    width: '10%',
+                    render: function(data) {
+                        const statusClass = data === 'ACTIVO' ? 'bg-success' : 'bg-danger';
+                        return `<span class="badge ${statusClass}">${data || 'ACTIVO'}</span>`;
+                    }
+                },
+                {
+                    data: null,
+                    className: 'text-end text-nowrap',
+                    orderable: false,
+                    width: '15%',
+                    render: function(data, type, row) {
+                        return `<div class="btn-group" style="min-width: 100px;">
+                                    <button class="btn btn-sm btn-outline-info" title="Generar Carnet" onclick="BeneficiariesView.generateCarnet(${row.id})">
+                                        <i class="fas fa-id-badge"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" title="Editar" onclick="BeneficiariesView.openModal(${row.id})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="BeneficiariesView.delete(${row.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>`;
+                    }
+                }
+            ],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
+                processing: '<i class="fas fa-spinner fa-spin fa-2x fa-fw text-primary"></i><span class="sr-only">Cargando...</span>'
             }
-            // draw(false) retains current pagination and search filters
-            table.draw(false);
-        } else {
-            tbody.innerHTML = htmlRows.join('');
-            // Custom options: Hide default search box (we use custom filters)
-            Helper.initDataTable('#beneficiariesTable', {
-                dom: '<"row"<"col-sm-12"t>><"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-                searching: true // Keep search enabled for our custom filters
-            });
+        });
+    },
+
+    filterTable() {
+        if ($.fn.DataTable.isDataTable('#beneficiariesTable')) {
+            $('#beneficiariesTable').DataTable().ajax.reload();
         }
     },
 
-    openModal(beneficiaryOrId = null) {
-        let b = (typeof beneficiaryOrId === 'number')
-            ? this.beneficiaries.find(x => x.id == beneficiaryOrId)
-            : beneficiaryOrId;
+    async openModal(beneficiaryOrId = null) {
+        let b = null;
+        if (typeof beneficiaryOrId === 'number') {
+            try {
+                const response = await Helper.fetchAPI(`/beneficiarios/${beneficiaryOrId}`);
+                if (response && response.success !== false) {
+                    b = response;
+                } else {
+                    Helper.alert('error', 'Error al cargar beneficiario');
+                    return;
+                }
+            } catch (err) {
+                console.error("Error loading beneficiary", err);
+                Helper.alert('error', 'Error de red');
+                return;
+            }
+        } else {
+            b = beneficiaryOrId;
+        }
 
         const isEdit = !!b;
         document.getElementById('formBeneficiary').reset();
@@ -1084,9 +1125,20 @@ var BeneficiariesView = {
         }
     },
 
-    generateCarnet(id) {
-        const b = this.beneficiaries.find(x => x.id == id);
-        if (!b) return;
+    async generateCarnet(id) {
+        let b = null;
+        try {
+            const response = await Helper.fetchAPI(`/beneficiarios/${id}`);
+            if (response && response.success !== false) {
+                b = response;
+            } else {
+                Helper.alert('error', 'No se pudo cargar el beneficiario para el carnet.');
+                return;
+            }
+        } catch (e) {
+            Helper.alert('error', 'Error de red');
+            return;
+        }
 
         // Token format for QR
         const token = `PAE:${b.id}:${b.document_number}`;

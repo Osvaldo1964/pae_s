@@ -351,6 +351,8 @@ if ($resource === 'auth') {
             $controller->printList();
         } elseif ($action === 'template') {
             $importController->downloadTemplate();
+        } elseif ($action && is_numeric($action)) {
+            $controller->show($action);
         } else {
             $controller->index();
         }
@@ -359,6 +361,8 @@ if ($resource === 'auth') {
             $importController->import();
         } elseif ($action === 'upload' && $id_param) {
             $controller->uploadDocuments($id_param);
+        } elseif ($action === 'datatable') {
+            $controller->datatable();
         } else {
             $controller->create();
         }
