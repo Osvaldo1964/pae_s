@@ -191,6 +191,7 @@ class ItemController
 
             $query = "INSERT INTO items (
                         pae_id, code, name, description, food_group_id, measurement_unit_id,
+                        exchange_group_id, exchange_weight_g,
                         gross_weight, net_weight, waste_percentage,
                         calories, proteins, carbohydrates, fats, fiber, iron, calcium, sodium,
                         vitamin_a, vitamin_c,
@@ -200,6 +201,7 @@ class ItemController
                         requires_refrigeration, is_perishable, shelf_life_days, unit_cost, status
                       ) VALUES (
                         :pae_id, :code, :name, :description, :food_group_id, :measurement_unit_id,
+                        :exchange_group_id, :exchange_weight_g,
                         :gross_weight, :net_weight, :waste_percentage,
                         :calories, :proteins, :carbohydrates, :fats, :fiber, :iron, :calcium, :sodium,
                         :vitamin_a, :vitamin_c,
@@ -218,6 +220,11 @@ class ItemController
             $stmt->bindParam(':description', $data['description']);
             $stmt->bindParam(':food_group_id', $data['food_group_id']);
             $stmt->bindParam(':measurement_unit_id', $data['measurement_unit_id']);
+            
+            $exchange_group_id = !empty($data['exchange_group_id']) ? $data['exchange_group_id'] : null;
+            $exchange_weight_g = !empty($data['exchange_weight_g']) ? $data['exchange_weight_g'] : 0.00;
+            $stmt->bindParam(':exchange_group_id', $exchange_group_id);
+            $stmt->bindParam(':exchange_weight_g', $exchange_weight_g);
 
             $gross_weight = $data['gross_weight'] ?? 100.00;
             $net_weight = $data['net_weight'] ?? 100.00;
@@ -337,6 +344,8 @@ class ItemController
                         description = :description,
                         food_group_id = :food_group_id,
                         measurement_unit_id = :measurement_unit_id,
+                        exchange_group_id = :exchange_group_id,
+                        exchange_weight_g = :exchange_weight_g,
                         gross_weight = :gross_weight,
                         net_weight = :net_weight,
                         waste_percentage = :waste_percentage,
@@ -376,6 +385,12 @@ class ItemController
             $stmt->bindParam(':description', $data['description']);
             $stmt->bindParam(':food_group_id', $data['food_group_id']);
             $stmt->bindParam(':measurement_unit_id', $data['measurement_unit_id']);
+            
+            $exchange_group_id = !empty($data['exchange_group_id']) ? $data['exchange_group_id'] : null;
+            $exchange_weight_g = !empty($data['exchange_weight_g']) ? $data['exchange_weight_g'] : 0.00;
+            $stmt->bindParam(':exchange_group_id', $exchange_group_id);
+            $stmt->bindParam(':exchange_weight_g', $exchange_weight_g);
+
             $stmt->bindParam(':gross_weight', $data['gross_weight']);
             $stmt->bindParam(':net_weight', $data['net_weight']);
             $stmt->bindParam(':waste_percentage', $data['waste_percentage']);
@@ -534,6 +549,31 @@ class ItemController
             echo json_encode([
                 'success' => false,
                 'message' => 'Error al obtener unidades de medida: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * GET /api/items/exchange-groups - Obtener grupos de intercambio
+     */
+    public function getExchangeGroups()
+    {
+        try {
+            $query = "SELECT * FROM exchange_groups ORDER BY name";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+
+            $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => true,
+                'data' => $groups
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al obtener grupos de intercambio: ' . $e->getMessage()
             ]);
         }
     }

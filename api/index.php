@@ -381,6 +381,8 @@ if ($resource === 'auth') {
             $controller->getFoodGroups();
         } elseif ($action === 'measurement-units') {
             $controller->getMeasurementUnits();
+        } elseif ($action === 'exchange-groups') {
+            $controller->getExchangeGroups();
         } elseif ($action && is_numeric($action)) {
             $controller->show($action);
         } else {

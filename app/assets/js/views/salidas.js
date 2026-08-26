@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Salidas View - Módulo de Inventarios
  * Maneja las salidas de almacén hacia las sedes educativas basadas en proyecciones.
  */
@@ -361,13 +361,118 @@ window.SalidasView = {
                        onfocus="SalidasView.unformatInput(this)" 
                        onblur="SalidasView.formatInput(this, 3)" required>
             </td>
-            <td class="text-end pe-4">
+            <td class="text-end pe-4 text-nowrap">
+                <button type="button" class="btn btn-link text-warning p-0 me-2 btn-sustituir" onclick="SalidasView.sustituirItem(this)" title="Sustituir por Intercambio" style="display: none;">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
                 <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()">
                     <i class="fas fa-times"></i>
                 </button>
+                <input type="hidden" class="row-substituted-for" value="${data && data.substituted_for_item_id ? data.substituted_for_item_id : ''}">
             </td>
         `;
         body.appendChild(row);
+
+        // Show sustituir button only if user has permissions
+        const userRole = window.appData?.user?.role_name || '';
+        const allowedRoles = ['PAE_ADMIN', 'OPERADOR_LOGISTICO', 'SUPER_ADMIN', 'ADMIN_CENTRAL', 'ADMIN'];
+        if (allowedRoles.includes(userRole) || allowedRoles.includes(window.appData?.user?.role)) {
+            row.querySelector('.btn-sustituir').style.display = 'inline-block';
+        }
+    },
+
+    },
+
+    async sustituirItem(btn) {
+        const row = btn.closest('tr');
+        const selectItem = row.querySelector('.row-item');
+        const currentItemId = selectItem.value;
+        const currentQtyInput = row.querySelector('.row-qty');
+        const currentQty = parseFloat(currentQtyInput.value.replace(/,/g, ''));
+
+        if (!currentItemId || isNaN(currentQty) || currentQty <= 0) {
+            Helper.alert('warning', 'Seleccione un ítem y cantidad antes de sustituir.');
+            return;
+        }
+
+        const originalItem = this.items.find(i => i.id == currentItemId);
+        if (!originalItem || !originalItem.exchange_group_id || originalItem.exchange_weight_g <= 0) {
+            Helper.alert('warning', 'Este ítem no pertenece a un grupo de intercambio o no tiene peso de equivalencia configurado.');
+            return;
+        }
+
+        // Get substitutes (same exchange group, different item)
+        const substitutes = this.items.filter(i => 
+            i.exchange_group_id == originalItem.exchange_group_id && 
+            i.id != originalItem.id && 
+            i.exchange_weight_g > 0
+        );
+
+        if (substitutes.length === 0) {
+            Helper.alert('info', 'No hay ítems equivalentes disponibles en este grupo de intercambio.');
+            return;
+        }
+
+        let optionsHtml = '';
+        substitutes.forEach(sub => {
+            // Calculation: (OriginalQty / OriginalWeight) * SubWeight
+            const requiredSubQty = (currentQty / originalItem.exchange_weight_g) * sub.exchange_weight_g;
+            optionsHtml += `<option value="${sub.id}" data-qty="${requiredSubQty}">${sub.name} (A despachar: ${Helper.formatNumber(requiredSubQty, 3)} ${sub.unit_abbr || ''})</option>`;
+        });
+
+        const { value: selectedSubId } = await Swal.fire({
+            title: 'Sustituir Ítem',
+            html: `
+                <div class="text-start mb-3">
+                    <p><strong>Original:</strong> ${originalItem.name} <br>
+                    <strong>Cantidad:</strong> ${currentQty} ${originalItem.unit_abbr || ''}</p>
+                    <hr>
+                    <label class="form-label fw-bold">Seleccione el sustituto (Equivalencia ICBF):</label>
+                    <select id="swal-substitute" class="form-select">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Aplicar Sustitución',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const sel = document.getElementById('swal-substitute');
+                const opt = sel.options[sel.selectedIndex];
+                return {
+                    id: sel.value,
+                    qty: opt.getAttribute('data-qty')
+                };
+            }
+        });
+
+        if (selectedSubId) {
+            // Update row
+            // We temporarily add the substitute item to the select options if it's not there
+            const optExists = Array.from(selectItem.options).some(o => o.value == selectedSubId.id);
+            if (!optExists) {
+                const subItem = substitutes.find(s => s.id == selectedSubId.id);
+                const newOpt = new Option(`${subItem.name} (${subItem.unit_abbr || ''})`, subItem.id);
+                selectItem.add(newOpt);
+            }
+            selectItem.value = selectedSubId.id;
+            
+            currentQtyInput.value = Helper.formatNumber(selectedSubId.qty, 3);
+            
+            const substitutedForInput = row.querySelector('.row-substituted-for');
+            if(substitutedForInput) {
+                // If it was already a substitute, keep the very first original ID, or else use current
+                if (!substitutedForInput.value) {
+                    substitutedForInput.value = originalItem.id;
+                }
+            }
+
+            // Update UI projected info to show it's a sub
+            row.querySelector('.row-projected-info').innerHTML = `<span class="badge bg-warning text-dark"><i class="fas fa-exchange-alt me-1"></i>Sustituto</span>`;
+            row.querySelector('.row-pending-info').innerText = '-';
+            
+            Helper.alert('success', 'Sustitución aplicada.');
+        }
     },
 
     updateRowProjected(select) {
@@ -410,10 +515,12 @@ window.SalidasView = {
         document.querySelectorAll('#salida-items-body tr').forEach(row => {
             const itemId = row.querySelector('.row-item').value;
             if (itemId) {
+                const substitutedFor = row.querySelector('.row-substituted-for') ? row.querySelector('.row-substituted-for').value : null;
                 items.push({
                     item_id: itemId,
                     batch: row.querySelector('.row-batch').value,
-                    quantity: row.querySelector('.row-qty').value
+                    quantity: row.querySelector('.row-qty').value,
+                    substituted_for_item_id: substitutedFor
                 });
             }
         });
@@ -436,7 +543,8 @@ window.SalidasView = {
             items: items.map(item => ({
                 item_id: item.item_id,
                 batch: item.batch,
-                quantity: item.quantity.replace(/,/g, '') // Remove commas
+                quantity: item.quantity.replace(/,/g, ''), // Remove commas
+                substituted_for_item_id: item.substituted_for_item_id
             }))
         };
 

@@ -198,8 +198,8 @@ class InventoryController
             $movement_id = $this->conn->lastInsertId();
 
             // 2. Detalles y Actualización de Stock
-            $stmtDet = $this->conn->prepare("INSERT INTO inventory_movement_details (movement_id, item_id, quantity, unit_price, batch_number, expiry_date) 
-                                            VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtDet = $this->conn->prepare("INSERT INTO inventory_movement_details (movement_id, item_id, quantity, unit_price, batch_number, expiry_date, substituted_for_item_id) 
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)");
 
             foreach ($data['items'] as $item) {
                 $stmtDet->execute([
@@ -208,7 +208,8 @@ class InventoryController
                     $item['quantity'],
                     $item['unit_price'] ?? 0,
                     $item['batch'] ?? null,
-                    $item['expiry'] ?? null
+                    $item['expiry'] ?? null,
+                    $item['substituted_for_item_id'] ?? null
                 ]);
 
 

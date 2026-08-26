@@ -7,6 +7,7 @@
 window.ItemsView = {
     foodGroups: [],
     measurementUnits: [],
+    exchangeGroups: [],
     currentItem: null,
 
     async init() {
@@ -29,6 +30,12 @@ window.ItemsView = {
             const unitsResponse = await Helper.fetchAPI('/items/measurement-units');
             if (unitsResponse.success) {
                 this.measurementUnits = unitsResponse.data;
+            }
+
+            // Load Exchange Groups
+            const exchangeResponse = await Helper.fetchAPI('/items/exchange-groups');
+            if (exchangeResponse.success) {
+                this.exchangeGroups = exchangeResponse.data;
             }
         } catch (error) {
             console.error('Error loading master data:', error);
@@ -176,6 +183,20 @@ window.ItemsView = {
                                                     <option value="">Seleccionar...</option>
                                                     ${this.measurementUnits.map(u => `<option value="${u.id}">${u.name} (${u.abbreviation})</option>`).join('')}
                                                 </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Grupo de Intercambio (Opcional)</label>
+                                                <select class="form-select" name="exchange_group_id">
+                                                    <option value="">No aplica...</option>
+                                                    ${this.exchangeGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+                                                </select>
+                                                <small class="text-muted">Lista ICBF</small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Peso de Intercambio (g / ml)</label>
+                                                <input type="text" class="form-control text-end" name="exchange_weight_g" value="0.00" 
+                                                       onfocus="ItemsView.unformatInput(this)" onblur="ItemsView.formatInput(this, 2)">
+                                                <small class="text-muted">Equivalencia de 1 porción</small>
                                             </div>
                                             <div class="col-12">
                                                 <label class="form-label">Descripción</label>
@@ -570,7 +591,8 @@ window.ItemsView = {
                     'gross_weight', 'net_weight', 'calories', 'proteins',
                     'carbohydrates', 'fats', 'fiber', 'iron', 'calcium',
                     'sodium', 'vitamin_a', 'vitamin_c', 'unit_cost', 'shelf_life_days',
-                    'is_local_purchase', 'requires_refrigeration', 'is_perishable'
+                    'is_local_purchase', 'requires_refrigeration', 'is_perishable',
+                    'exchange_weight_g'
                 ];
                 if (numericFields.includes(key)) {
                     data[key] = value.replace(/,/g, '');
