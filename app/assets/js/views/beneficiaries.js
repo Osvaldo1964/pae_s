@@ -1623,10 +1623,20 @@ var BeneficiariesView = {
                 const results = res.details || {};
                 let msg = `Proceso finalizado.\nCreados: ${results.created || 0}\nActualizados: ${results.updated || 0}\nErrores: ${results.errors || 0}`;
 
-                if (results.error_list && results.error_list.length > 0) {
-                    // Create a text file with errors? Or just show summary
-                    console.error("Errores de importación:", results.error_list);
-                    msg += '\n\nRevise la consola para detalles de errores.';
+                if (res.errors && res.errors.length > 0) {
+                    console.error("Errores de importación:", res.errors);
+                    msg += '\n\nSe ha descargado un archivo de texto con el detalle de los errores detectados.';
+                    
+                    const errorText = res.errors.join('\n');
+                    const blob = new Blob([errorText], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'errores_carga_beneficiarios.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                 }
 
                 Swal.fire({

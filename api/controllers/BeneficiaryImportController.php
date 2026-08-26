@@ -78,6 +78,7 @@ class BeneficiaryImportController extends BaseController
         // Increase limits for large file processing
         set_time_limit(300);
         ini_set('memory_limit', '256M');
+        @ini_set('auto_detect_line_endings', true); // Supress PHP 8.1+ deprecation warning
 
         $pae_id = $this->getPaeIdFromToken();
         if (!$pae_id) {
@@ -108,7 +109,7 @@ class BeneficiaryImportController extends BaseController
             rewind($handle);
         }
 
-        $headerRow = fgetcsv($handle, 1000, $delimiter);
+        $headerRow = fgetcsv($handle, 0, $delimiter);
 
         // Normalize headers to ignore parenthesized instructions
         $headerRow = array_map(function($h) {
@@ -171,7 +172,7 @@ class BeneficiaryImportController extends BaseController
             $stmtInsertService = $this->conn->prepare("INSERT INTO beneficiary_services (pae_id, beneficiary_id, service_id) VALUES (?, ?, 1)");
 
 
-            while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
                 $rowNum++;
 
                 // Ensure UTF-8 encoding for all elements in the row
@@ -185,9 +186,9 @@ class BeneficiaryImportController extends BaseController
                 $docNum = trim($row[$map['numero_documento']] ?? '');
                 $firstName = strtoupper(trim($row[$map['primer_nombre']] ?? ''));
                 $lastName1 = strtoupper(trim($row[$map['primer_apellido']] ?? ''));
-                $branchName = strtoupper(trim($row[$map['sede_educativa']] ?? ''));
+                $branchName = $this->normalizeString($row[$map['sede_educativa']] ?? '');
                 $birthDate = trim($row[$map['fecha_nacimiento']] ?? '');
-                $rationNames = strtoupper(trim($row[$map['tipos_racion']] ?? ''));
+                $rationNames = $this->normalizeString($row[$map['tipos_racion']] ?? '');
 
                 if (!$docNum || !$firstName || !$lastName1) continue; // Skip empty rows
 
@@ -238,7 +239,7 @@ class BeneficiaryImportController extends BaseController
                     $rights = [];
                     $rNames = explode(',', $rationNames);
                     foreach ($rNames as $rn) {
-                        $rn = trim($rn);
+                        $rn = $this->normalizeString($rn);
                         if (isset($rationTypes[$rn])) {
                             $rights[] = $rationTypes[$rn];
                         }
@@ -297,17 +298,39 @@ class BeneficiaryImportController extends BaseController
     }
 
     // Helpers for Maps
+    private function normalizeString($string)
+    {
+        $string = trim($string);
+        $unwanted = [
+            'Á'=>'A', 'É'=>'E', 'Í'=>'I', 'Ó'=>'O', 'Ú'=>'U', 'Ñ'=>'N',
+            'á'=>'A', 'é'=>'E', 'í'=>'I', 'ó'=>'O', 'ú'=>'U', 'ñ'=>'N'
+        ];
+        $string = strtr($string, $unwanted);
+        $string = preg_replace('/\s+/', ' ', $string);
+        return strtoupper($string);
+    }
+
     private function getMap($table, $keyCol, $valCol)
     {
         $stmt = $this->conn->query("SELECT $keyCol, $valCol FROM $table");
-        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $map = [];
+        foreach($rows as $r) {
+            $map[$this->normalizeString($r[$keyCol])] = $r[$valCol];
+        }
+        return $map;
     }
 
     private function getNameMap($table, $paeCol, $paeId)
     {
         $stmt = $this->conn->prepare("SELECT name, id FROM $table WHERE $paeCol = ?");
         $stmt->execute([$paeId]);
-        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $map = [];
+        foreach($rows as $r) {
+            $map[$this->normalizeString($r['name'])] = $r['id'];
+        }
+        return $map;
     }
 
     private function getBranchMap($paeId)
@@ -317,7 +340,12 @@ class BeneficiaryImportController extends BaseController
                                        JOIN schools s ON b.school_id = s.id 
                                        WHERE (b.pae_id = :pae_id OR s.pae_id = :pae_id)");
         $stmt->execute([':pae_id' => $paeId]);
-        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $map = [];
+        foreach($rows as $r) {
+            $map[$this->normalizeString($r['name'])] = $r['id'];
+        }
+        return $map;
     }
 
     private function parseGender($rawGender)
