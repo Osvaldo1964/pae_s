@@ -21,12 +21,4 @@ spl_autoload_register(function ($class_name) {
 use Config\Database;
 
 $db = Database::getInstance()->getConnection();
-
-$sql = file_get_contents('sql/32_exchange_lists_schema.sql');
-
-try {
-    $db->exec($sql);
-    echo "Migration completed successfully.\n";
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
-}
+$stmt = $db->query("DESCRIBE items;"); print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
