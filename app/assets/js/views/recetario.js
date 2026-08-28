@@ -81,8 +81,8 @@ window.RecetarioView = {
         return this.recipes.map(r => `
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm recipe-card position-relative overflow-hidden">
-                    <div class="meal-type-badge ${r.ration_type_name === 'ALMUERZO' ? 'bg-primary' : 'bg-info'} text-white px-2 py-0 small fw-bold" style="font-size: 0.6rem;">
-                        ${r.ration_type_name || r.meal_type}
+                    <div class="meal-type-badge ${r.type === 'MINUTA' ? 'bg-warning text-dark' : 'bg-info text-white'} px-2 py-0 small fw-bold" style="font-size: 0.6rem;">
+                        ${r.type === 'MINUTA' ? `👑 MINUTA | ${r.ration_type_name || r.meal_type || 'ENTREGABLE'}` : '🍳 SUB-PREPARACIÓN'}
                     </div>
                     <div class="card-body pt-4 p-2">
                         <div class="d-flex justify-content-between align-items-start mb-1">
@@ -185,13 +185,28 @@ window.RecetarioView = {
                 modalDiv.className = 'modal fade';
                 modalDiv.id = 'viewRecipeModal';
                 modalDiv.innerHTML = `
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-xl modal-dialog-centered">
                         <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header bg-primary text-white">
-                                <h5 class="modal-title fw-bold"><i class="fas fa-list me-2"></i>Composición: ${r.name}</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            <div class="modal-header ${r.type === 'MINUTA' ? 'bg-warning text-dark' : 'bg-primary text-white'}">
+                                <h5 class="modal-title fw-bold">
+                                    <i class="fas ${r.type === 'MINUTA' ? 'fa-crown' : 'fa-utensils'} me-2"></i>
+                                    ${r.type === 'MINUTA' ? '👑 Minuta' : '🍳 Sub-preparación'}: ${r.name}
+                                </h5>
+                                <button type="button" class="btn-close ${r.type === 'MINUTA' ? '' : 'btn-close-white'}" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body p-0">
+                                ${r.type === 'MINUTA' && r.subpreparations && r.subpreparations.length > 0 ? `
+                                <div class="p-3 bg-light border-bottom">
+                                    <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="fas fa-layer-group text-warning me-1"></i>Sub-preparaciones Incluidas en esta Minuta:</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${r.subpreparations.map(s => `
+                                            <span class="badge bg-white text-dark border border-warning shadow-sm py-2 px-3 fw-bold" style="font-size: 0.85rem;">
+                                                <i class="fas fa-utensils text-warning me-1"></i> ${s.name}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                ` : ''}
                                 <div class="table-responsive">
                                     <table class="table table-sm table-bordered text-center mb-0">
                                         <thead class="bg-light">
@@ -207,18 +222,21 @@ window.RecetarioView = {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            ${r.nutrition_groups ? ['PREESCOLAR', 'PRIMARIA_A', 'PRIMARIA_B', 'SECUNDARIA', 'GENERAL'].map(g => `
-                                            <tr>
-                                                <td class="fw-bold text-start">${g}</td>
-                                                <td>${Math.round(r.nutrition_groups[g].calories)} kcal</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].proteins).toFixed(1)} g</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].carbohydrates).toFixed(1)} g</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].fats).toFixed(1)} g</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].calcium).toFixed(1)} mg</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].iron).toFixed(1)} mg</td>
-                                                <td>${parseFloat(r.nutrition_groups[g].sodium).toFixed(0)} mg</td>
-                                            </tr>
-                                            `).join('') : ''}
+                                            ${r.nutrition_groups ? ['PREESCOLAR', 'PRIMARIA_A', 'PRIMARIA_B', 'SECUNDARIA', 'GENERAL'].map(g => {
+                                                const ng = r.nutrition_groups[g] || {};
+                                                return `
+                                                <tr>
+                                                    <td class="fw-bold text-start">${g}</td>
+                                                    <td>${Math.round(ng.calories || 0)} kcal</td>
+                                                    <td class="text-success">${parseFloat(ng.proteins || 0).toFixed(1)} g</td>
+                                                    <td class="text-info">${parseFloat(ng.carbohydrates || 0).toFixed(1)} g</td>
+                                                    <td>${parseFloat(ng.fats || 0).toFixed(1)} g</td>
+                                                    <td>${parseFloat(ng.calcium || 0).toFixed(1)} mg</td>
+                                                    <td>${parseFloat(ng.iron || 0).toFixed(1)} mg</td>
+                                                    <td class="text-danger">${parseFloat(ng.sodium || 0).toFixed(0)} mg</td>
+                                                </tr>
+                                                `;
+                                            }).join('') : ''}
                                         </tbody>
                                     </table>
                                 </div>
@@ -322,7 +340,7 @@ window.RecetarioView = {
         modalDiv.className = 'modal fade';
         modalDiv.id = 'recipeModal';
         modalDiv.innerHTML = `
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header bg-primary text-white">
                         <h5 class="modal-title fw-bold">
@@ -334,22 +352,51 @@ window.RecetarioView = {
                     <div class="modal-body p-4">
                         <form id="recipe-form" data-id="${isEdit ? recipe.id : ''}">
                             <div class="row g-3 mb-4">
-                                <div class="col-md-8">
-                                    <label class="form-label fw-bold small text-muted text-uppercase">Nombre del Plato</label>
+                                <div class="col-md-12 mb-2">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="type" id="type-sub" value="SUBPREPARACION" ${!isEdit || recipe.type !== 'MINUTA' ? 'checked' : ''} onchange="RecetarioView.toggleType()">
+                                        <label class="btn btn-outline-primary fw-bold" for="type-sub">🍳 Sub-preparación (Receta Base)</label>
+                                        
+                                        <input type="radio" class="btn-check" name="type" id="type-min" value="MINUTA" ${isEdit && recipe.type === 'MINUTA' ? 'checked' : ''} onchange="RecetarioView.toggleType()">
+                                        <label class="btn btn-outline-primary fw-bold" for="type-min">👑 Minuta (Plato Completo)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-8" id="recipe-name-col">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Nombre de la Receta / Preparación</label>
                                     <input type="text" class="form-control" name="name" value="${isEdit ? recipe.name : ''}" placeholder="Ej: Arroz con Pollo..." required>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold small text-muted text-uppercase">Tipo de Ración / Entrega</label>
-                                    <select class="form-select" name="ration_type_id" required>
+                                <div class="col-md-4" id="ration-type-container">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Tipo de Ración / Entrega <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="ration_type_id" id="recipe-ration-type">
                                         <option value="">Seleccione...</option>
                                         ${this.rationTypes.map(rt => `<option value="${rt.id}" ${isEdit && recipe.ration_type_id == rt.id ? 'selected' : ''}>${rt.name}</option>`).join('')}
                                     </select>
-
-
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-bold small text-muted text-uppercase">Descripción / Observaciones</label>
                                     <textarea class="form-control" name="description" rows="2" placeholder="Notas sobre la preparación...">${isEdit ? recipe.description || '' : ''}</textarea>
+                                </div>
+                            </div>
+
+                            <div id="minuta-section" class="mb-4" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 fw-bold text-warning small text-uppercase"><i class="fas fa-layer-group me-1"></i>Sub-preparaciones (Solo para Minutas)</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3" onclick="RecetarioView.addSubpreparationRow()">
+                                        <i class="fas fa-plus me-1"></i> Añadir Sub-preparación
+                                    </button>
+                                </div>
+                                <div class="table-responsive border rounded bg-light border-warning">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="bg-warning text-dark small text-uppercase">
+                                            <tr>
+                                                <th class="ps-3">Sub-preparación Vinculada</th>
+                                                <th style="width: 5%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recipe-subpreps-body">
+                                            <!-- Dynamic rows -->
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
@@ -398,6 +445,12 @@ window.RecetarioView = {
         const modal = new bootstrap.Modal(modalDiv);
         modal.show();
 
+        this.toggleType(); // Set initial visibility
+
+        if (isEdit && recipe.subpreparations && recipe.subpreparations.length > 0) {
+            recipe.subpreparations.forEach(sub => this.addSubpreparationRow(sub));
+        }
+
         if (isEdit && recipe.items && recipe.items.length > 0) {
             recipe.items.forEach(item => this.addIngredientRow(item));
         } else {
@@ -407,8 +460,57 @@ window.RecetarioView = {
         modalDiv.addEventListener('hidden.bs.modal', function () { modalDiv.remove(); });
     },
 
+    toggleType() {
+        const type = document.querySelector('input[name="type"]:checked')?.value;
+        const minutaSection = document.getElementById('minuta-section');
+        const rationContainer = document.getElementById('ration-type-container');
+        const rationSelect = document.getElementById('recipe-ration-type');
+        const nameCol = document.getElementById('recipe-name-col');
+        const nameInput = document.querySelector('input[name="name"]');
+        
+        if (type === 'MINUTA') {
+            if (minutaSection) minutaSection.style.display = 'block';
+            if (rationContainer) rationContainer.style.display = 'block';
+            if (rationSelect) rationSelect.required = true;
+            if (nameCol) { nameCol.className = 'col-md-8'; }
+            if (nameInput) nameInput.placeholder = 'Ej: Desayuno Completo Tipo A, Almuerzo Estándar...';
+            const subprepBody = document.getElementById('recipe-subpreps-body');
+            if (subprepBody && subprepBody.children.length === 0) {
+                this.addSubpreparationRow();
+            }
+        } else {
+            if (minutaSection) minutaSection.style.display = 'none';
+            if (rationContainer) rationContainer.style.display = 'none';
+            if (rationSelect) {
+                rationSelect.required = false;
+                rationSelect.value = '';
+            }
+            if (nameCol) { nameCol.className = 'col-md-12'; }
+            if (nameInput) nameInput.placeholder = 'Ej: Huevos Revueltos, Café con Leche, Porción de Fruta...';
+        }
+    },
+
+    addSubpreparationRow(data = null) {
+        const tbody = document.getElementById('recipe-subpreps-body');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.className = 'subprep-row bg-white';
+        
+        tr.innerHTML = `
+            <td class="ps-2">
+                <select class="form-select form-select-sm border-0 bg-transparent" name="subprep_id">
+                    <option value="">Seleccione sub-preparación...</option>
+                    ${this.recipes.filter(r => r.type !== 'MINUTA').map(r => `<option value="${r.id}" ${data && data.id == r.id ? 'selected' : ''}>${r.name}</option>`).join('')}
+                </select>
+            </td>
+            <td class="text-center"><button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-minus-circle"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    },
+
     addIngredientRow(data = null) {
         const tbody = document.getElementById('recipe-items-body');
+        if (!tbody) return;
         const tr = document.createElement('tr');
         tr.className = 'ingredient-row bg-white';
 
@@ -416,7 +518,7 @@ window.RecetarioView = {
 
         tr.innerHTML = `
             <td class="ps-2">
-                <select class="form-select form-select-sm border-0 bg-transparent" name="item_id" required>
+                <select class="form-select form-select-sm border-0 bg-transparent" name="item_id">
                     <option value="">Ingrediente...</option>
                     ${this.items.map(i => `<option value="${i.id}" ${data && data.item_id == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
                 </select>
@@ -432,9 +534,7 @@ window.RecetarioView = {
         tbody.appendChild(tr);
     },
 
-    async saveRecipe() {
-        // ... (existing saveRecipe code)
-    },
+
 
     showReportModal() {
         const modalDiv = document.createElement('div');
@@ -856,39 +956,75 @@ window.RecetarioView = {
 
     async saveRecipe() {
         const form = document.getElementById('recipe-form');
-        if (!form.checkValidity()) { form.reportValidity(); return; }
-
-        const recipeId = form.dataset.id;
         const formData = new FormData(form);
+        const name = (formData.get('name') || '').trim();
+        const type = formData.get('type') || 'SUBPREPARACION';
+        const recipeId = form.dataset.id;
+
+        if (!name) {
+            Helper.alert('warning', 'Por favor ingrese el nombre de la receta o minuta.');
+            form.querySelector('[name="name"]')?.focus();
+            return;
+        }
+
+        const isMinuta = type === 'MINUTA';
+        const rationTypeId = isMinuta ? formData.get('ration_type_id') : null;
+        const mealType = isMinuta ? (this.rationTypes.find(rt => rt.id == rationTypeId)?.name || '') : 'SUBPREPARACION';
+
+        if (isMinuta && !rationTypeId) {
+            Helper.alert('warning', 'Debe seleccionar el Tipo de Ración para la Minuta.');
+            form.querySelector('#recipe-ration-type')?.focus();
+            return;
+        }
+
         const items = [];
         document.querySelectorAll('.ingredient-row').forEach(row => {
-            const id = row.querySelector('[name="item_id"]').value;
+            const id = row.querySelector('[name="item_id"]')?.value;
             if (id) {
                 items.push({
                     item_id: id,
                     quantities: {
-                        PREESCOLAR: row.querySelector('[name="qty_pre"]').value || 0,
-                        PRIMARIA_A: row.querySelector('[name="qty_pria"]').value || 0,
-                        PRIMARIA_B: row.querySelector('[name="qty_prib"]').value || 0,
-                        SECUNDARIA: row.querySelector('[name="qty_sec"]').value || 0,
-                        GENERAL: row.querySelector('[name="qty_gen"]').value || 0
+                        PREESCOLAR: parseFloat(row.querySelector('[name="qty_pre"]')?.value) || 0,
+                        PRIMARIA_A: parseFloat(row.querySelector('[name="qty_pria"]')?.value) || 0,
+                        PRIMARIA_B: parseFloat(row.querySelector('[name="qty_prib"]')?.value) || 0,
+                        SECUNDARIA: parseFloat(row.querySelector('[name="qty_sec"]')?.value) || 0,
+                        GENERAL: parseFloat(row.querySelector('[name="qty_gen"]')?.value) || 0
                     },
-                    preparation: row.querySelector('[name="preparation"]').value
+                    preparation: row.querySelector('[name="preparation"]')?.value || ''
                 });
             }
         });
 
-        if (items.length === 0) { Helper.alert('warning', 'Debe añadir al menos un ingrediente'); return; }
+        const subpreparations = [];
+        if (isMinuta) {
+            document.querySelectorAll('.subprep-row').forEach(row => {
+                const subId = row.querySelector('[name="subprep_id"]')?.value;
+                if (subId) subpreparations.push(subId);
+            });
+
+            if (subpreparations.length === 0 && items.length === 0) {
+                Helper.alert('warning', 'Una Minuta debe contener al menos una Sub-preparación o un Insumo.');
+                return;
+            }
+        } else {
+            if (items.length === 0) {
+                Helper.alert('warning', 'Debe seleccionar y añadir al menos un ingrediente a la sub-preparación.');
+                return;
+            }
+        }
 
         const data = {
-            name: formData.get('name'),
-            ration_type_id: formData.get('ration_type_id'),
-            meal_type: this.rationTypes.find(rt => rt.id == formData.get('ration_type_id'))?.name || '',
-            description: formData.get('description'),
-            items: items
+            name: name,
+            type: type,
+            ration_type_id: rationTypeId,
+            meal_type: mealType,
+            description: formData.get('description') || '',
+            items: items,
+            subpreparations: subpreparations
         };
 
         try {
+            Helper.loading(recipeId ? 'Actualizando receta...' : 'Guardando receta...');
             const method = recipeId ? 'PUT' : 'POST';
             const url = recipeId ? `/recipes/${recipeId}` : '/recipes';
 
@@ -898,14 +1034,19 @@ window.RecetarioView = {
             });
 
             if (response.success) {
-                bootstrap.Modal.getInstance(document.getElementById('recipeModal')).hide();
-                Helper.alert('success', recipeId ? 'Receta actualizada' : 'Receta guardada');
+                const modalEl = document.getElementById('recipeModal');
+                if (modalEl) {
+                    const inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) inst.hide();
+                }
+                Helper.alert('success', recipeId ? 'Receta actualizada exitosamente' : 'Receta guardada exitosamente');
                 await this.init();
             } else {
-                Helper.alert('error', response.message);
+                Helper.alert('error', response.message || 'Error al guardar la receta');
             }
         } catch (error) {
-            Helper.alert('error', 'Error al procesar la receta');
+            console.error('Error in saveRecipe:', error);
+            Helper.alert('error', 'Error al procesar la receta: ' + error.message);
         }
     }
 };

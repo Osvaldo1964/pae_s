@@ -189,10 +189,36 @@ class RecipeController
             }
             $recipe['items'] = array_values($groupedItems);
 
-            // Nutrición por grupo
-            $stmtNut = $this->conn->prepare("SELECT * FROM recipe_nutrition WHERE recipe_id = ?");
-            $stmtNut->execute([$id]);
-            $recipe['nutrition'] = $stmtNut->fetchAll(PDO::FETCH_ASSOC);
+            // Nutrición por grupo estructurada
+            $queryNut = "SELECT age_group, total_calories as calories, total_proteins as proteins, total_carbohydrates as carbohydrates, total_fats as fats, total_calcium as calcium, total_iron as iron, total_sodium as sodium 
+                         FROM recipe_nutrition WHERE recipe_id = :rid";
+            $stmtNut = $this->conn->prepare($queryNut);
+            $stmtNut->execute([':rid' => $id]);
+            
+            $nutritionData = ['PREESCOLAR' => [], 'PRIMARIA_A' => [], 'PRIMARIA_B' => [], 'SECUNDARIA' => [], 'GENERAL' => []];
+            $emptyGroup = ['calories'=>0, 'proteins'=>0, 'carbohydrates'=>0, 'fats'=>0, 'calcium'=>0, 'iron'=>0, 'sodium'=>0];
+            
+            while($n = $stmtNut->fetch(PDO::FETCH_ASSOC)){
+                $nutritionData[$n['age_group']] = $n;
+            }
+            
+            foreach($nutritionData as $g => $data) {
+                if(empty($data)) $nutritionData[$g] = $emptyGroup;
+            }
+            
+            $recipe['nutrition_groups'] = $nutritionData;
+
+            if ($recipe['type'] === 'MINUTA') {
+                $querySub = "SELECT r.id, r.name, r.meal_type 
+                             FROM recipe_subpreparations rs
+                             JOIN recipes r ON rs.child_recipe_id = r.id
+                             WHERE rs.parent_recipe_id = :id";
+                $stmtSub = $this->conn->prepare($querySub);
+                $stmtSub->execute([':id' => $id]);
+                $recipe['subpreparations'] = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                $recipe['subpreparations'] = [];
+            }
 
             echo json_encode(['success' => true, 'data' => $recipe]);
         } catch (Exception $e) {
@@ -212,16 +238,28 @@ class RecipeController
 
             $this->conn->beginTransaction();
 
-            $query = "INSERT INTO recipes (pae_id, name, meal_type, ration_type_id, description) VALUES (:pae_id, :name, :type, :rtid, :desc)";
+            $query = "INSERT INTO recipes (pae_id, name, meal_type, ration_type_id, description, type) VALUES (:pae_id, :name, :type, :rtid, :desc, :rtype)";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ':pae_id' => $pae_id,
                 ':name' => $data['name'],
-                ':type' => $data['meal_type'] ?? '',
-                ':rtid' => $data['ration_type_id'] ?? null,
-                ':desc' => $data['description'] ?? ''
+                ':type' => $data['meal_type'] ?? 'SUBPREPARACION',
+                ':rtid' => !empty($data['ration_type_id']) ? $data['ration_type_id'] : null,
+                ':desc' => $data['description'] ?? '',
+                ':rtype' => $data['type'] ?? 'SUBPREPARACION'
             ]);
             $recipe_id = $this->conn->lastInsertId();
+
+            if (isset($data['subpreparations']) && is_array($data['subpreparations']) && ($data['type'] ?? '') === 'MINUTA') {
+                $querySub = "INSERT INTO recipe_subpreparations (parent_recipe_id, child_recipe_id) VALUES (:pid, :cid)";
+                $stmtSub = $this->conn->prepare($querySub);
+                foreach ($data['subpreparations'] as $child_id) {
+                    $stmtSub->execute([
+                        ':pid' => $recipe_id,
+                        ':cid' => $child_id
+                    ]);
+                }
+            }
 
             if (isset($data['items']) && is_array($data['items'])) {
                 $queryItem = "INSERT INTO recipe_items (recipe_id, item_id, age_group, quantity, preparation_method) VALUES (:rid, :iid, :group, :qty, :prep)";
@@ -260,13 +298,13 @@ class RecipeController
 
         foreach ($groups as $group) {
             $query = "SELECT 
-                        SUM(ri.quantity * i.calories / 100) as calories,
-                        SUM(ri.quantity * i.proteins / 100) as proteins,
-                        SUM(ri.quantity * i.carbohydrates / 100) as carbohydrates,
-                        SUM(ri.quantity * i.fats / 100) as fats,
-                        SUM(ri.quantity * i.calcium / 100) as calcium,
-                        SUM(ri.quantity * i.iron / 100) as iron,
-                        SUM(ri.quantity * i.sodium / 100) as sodium
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.calories / 100) as calories,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.proteins / 100) as proteins,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.carbohydrates / 100) as carbohydrates,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.fats / 100) as fats,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.calcium / 100) as calcium,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.iron / 100) as iron,
+                        SUM((ri.quantity * (1 - COALESCE(i.waste_percentage, 0) / 100)) * i.sodium / 100) as sodium
                       FROM recipe_items ri
                       JOIN items i ON ri.item_id = i.id
                       WHERE ri.recipe_id = :id AND ri.age_group = :group";
@@ -275,32 +313,54 @@ class RecipeController
             $stmtCalc->execute([':id' => $recipe_id, ':group' => $group]);
             $totals = $stmtCalc->fetch(PDO::FETCH_ASSOC);
 
-            if ($totals) {
-                $queryUpd = "INSERT INTO recipe_nutrition (recipe_id, age_group, total_calories, total_proteins, total_carbohydrates, total_fats, total_calcium, total_iron, total_sodium)
-                             VALUES (:id, :group, :cal, :pro, :car, :fat, :calcium, :iron, :sodium)
-                             ON DUPLICATE KEY UPDATE 
-                             total_calories = :cal2, total_proteins = :pro2, total_carbohydrates = :car2, total_fats = :fat2,
-                             total_calcium = :calcium2, total_iron = :iron2, total_sodium = :sodium2";
-                $stmtUpd = $this->conn->prepare($queryUpd);
-                $stmtUpd->execute([
-                    ':id' => $recipe_id,
-                    ':group' => $group,
-                    ':cal' => $totals['calories'] ?? 0,
-                    ':pro' => $totals['proteins'] ?? 0,
-                    ':car' => $totals['carbohydrates'] ?? 0,
-                    ':fat' => $totals['fats'] ?? 0,
-                    ':calcium' => $totals['calcium'] ?? 0,
-                    ':iron' => $totals['iron'] ?? 0,
-                    ':sodium' => $totals['sodium'] ?? 0,
-                    ':cal2' => $totals['calories'] ?? 0,
-                    ':pro2' => $totals['proteins'] ?? 0,
-                    ':car2' => $totals['carbohydrates'] ?? 0,
-                    ':fat2' => $totals['fats'] ?? 0,
-                    ':calcium2' => $totals['calcium'] ?? 0,
-                    ':iron2' => $totals['iron'] ?? 0,
-                    ':sodium2' => $totals['sodium'] ?? 0
-                ]);
-            }
+            // Sumar nutrición de sub-preparaciones si es una MINUTA
+            $querySub = "SELECT 
+                            SUM(rn.total_calories) as calories,
+                            SUM(rn.total_proteins) as proteins,
+                            SUM(rn.total_carbohydrates) as carbohydrates,
+                            SUM(rn.total_fats) as fats,
+                            SUM(rn.total_calcium) as calcium,
+                            SUM(rn.total_iron) as iron,
+                            SUM(rn.total_sodium) as sodium
+                         FROM recipe_subpreparations rs
+                         JOIN recipe_nutrition rn ON rs.child_recipe_id = rn.recipe_id
+                         WHERE rs.parent_recipe_id = :id AND rn.age_group = :group";
+            $stmtSub = $this->conn->prepare($querySub);
+            $stmtSub->execute([':id' => $recipe_id, ':group' => $group]);
+            $subTotals = $stmtSub->fetch(PDO::FETCH_ASSOC);
+
+            $cal = floatval($totals['calories'] ?? 0) + floatval($subTotals['calories'] ?? 0);
+            $pro = floatval($totals['proteins'] ?? 0) + floatval($subTotals['proteins'] ?? 0);
+            $car = floatval($totals['carbohydrates'] ?? 0) + floatval($subTotals['carbohydrates'] ?? 0);
+            $fat = floatval($totals['fats'] ?? 0) + floatval($subTotals['fats'] ?? 0);
+            $calcium = floatval($totals['calcium'] ?? 0) + floatval($subTotals['calcium'] ?? 0);
+            $iron = floatval($totals['iron'] ?? 0) + floatval($subTotals['iron'] ?? 0);
+            $sodium = floatval($totals['sodium'] ?? 0) + floatval($subTotals['sodium'] ?? 0);
+
+            $queryUpd = "INSERT INTO recipe_nutrition (recipe_id, age_group, total_calories, total_proteins, total_carbohydrates, total_fats, total_calcium, total_iron, total_sodium)
+                         VALUES (:id, :group, :cal, :pro, :car, :fat, :calcium, :iron, :sodium)
+                         ON DUPLICATE KEY UPDATE 
+                         total_calories = :cal2, total_proteins = :pro2, total_carbohydrates = :car2, total_fats = :fat2,
+                         total_calcium = :calcium2, total_iron = :iron2, total_sodium = :sodium2";
+            $stmtUpd = $this->conn->prepare($queryUpd);
+            $stmtUpd->execute([
+                ':id' => $recipe_id,
+                ':group' => $group,
+                ':cal' => $cal,
+                ':pro' => $pro,
+                ':car' => $car,
+                ':fat' => $fat,
+                ':calcium' => $calcium,
+                ':iron' => $iron,
+                ':sodium' => $sodium,
+                ':cal2' => $cal,
+                ':pro2' => $pro,
+                ':car2' => $car,
+                ':fat2' => $fat,
+                ':calcium2' => $calcium,
+                ':iron2' => $iron,
+                ':sodium2' => $sodium
+            ]);
         }
 
         // Mantener compatibilidad con tabla principal para visualización general (Promedio o Secundaria)
@@ -321,15 +381,31 @@ class RecipeController
             $data = json_decode(file_get_contents("php://input"), true);
             $this->conn->beginTransaction();
 
-            $query = "UPDATE recipes SET name = :name, meal_type = :type, ration_type_id = :rtid, description = :desc WHERE id = :id";
+            $query = "UPDATE recipes SET name = :name, meal_type = :type, ration_type_id = :rtid, description = :desc, type = :rtype WHERE id = :id";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ':id' => $id,
                 ':name' => $data['name'],
-                ':type' => $data['meal_type'] ?? '',
-                ':rtid' => $data['ration_type_id'] ?? null,
-                ':desc' => $data['description'] ?? ''
+                ':type' => $data['meal_type'] ?? 'SUBPREPARACION',
+                ':rtid' => !empty($data['ration_type_id']) ? $data['ration_type_id'] : null,
+                ':desc' => $data['description'] ?? '',
+                ':rtype' => $data['type'] ?? 'SUBPREPARACION'
             ]);
+
+            // Actualizar sub-preparaciones
+            $stmtDelSub = $this->conn->prepare("DELETE FROM recipe_subpreparations WHERE parent_recipe_id = :rid");
+            $stmtDelSub->execute([':rid' => $id]);
+
+            if (isset($data['subpreparations']) && is_array($data['subpreparations']) && ($data['type'] ?? '') === 'MINUTA') {
+                $querySub = "INSERT INTO recipe_subpreparations (parent_recipe_id, child_recipe_id) VALUES (:pid, :cid)";
+                $stmtSub = $this->conn->prepare($querySub);
+                foreach ($data['subpreparations'] as $child_id) {
+                    $stmtSub->execute([
+                        ':pid' => $id,
+                        ':cid' => $child_id
+                    ]);
+                }
+            }
 
             // Actualizar ingredientes: Borrar y re-insertar
             $stmtDel = $this->conn->prepare("DELETE FROM recipe_items WHERE recipe_id = :rid");

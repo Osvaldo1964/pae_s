@@ -192,7 +192,7 @@ class ItemController
             $query = "INSERT INTO items (
                         pae_id, code, name, description, food_group_id, measurement_unit_id,
                         exchange_group_id, exchange_weight_g,
-                        gross_weight, net_weight, waste_percentage,
+                        gross_weight, net_weight, waste_percentage, commercial_presentation,
                         calories, proteins, carbohydrates, fats, fiber, iron, calcium, sodium,
                         vitamin_a, vitamin_c,
                         contains_gluten, contains_lactose, contains_peanuts, contains_seafood,
@@ -202,7 +202,7 @@ class ItemController
                       ) VALUES (
                         :pae_id, :code, :name, :description, :food_group_id, :measurement_unit_id,
                         :exchange_group_id, :exchange_weight_g,
-                        :gross_weight, :net_weight, :waste_percentage,
+                        :gross_weight, :net_weight, :waste_percentage, :commercial_presentation,
                         :calories, :proteins, :carbohydrates, :fats, :fiber, :iron, :calcium, :sodium,
                         :vitamin_a, :vitamin_c,
                         :contains_gluten, :contains_lactose, :contains_peanuts, :contains_seafood,
@@ -229,9 +229,11 @@ class ItemController
             $gross_weight = $data['gross_weight'] ?? 100.00;
             $net_weight = $data['net_weight'] ?? 100.00;
             $waste_percentage = $data['waste_percentage'] ?? 0.00;
+            $commercial_presentation = $data['commercial_presentation'] ?? 100.00;
             $stmt->bindParam(':gross_weight', $gross_weight);
             $stmt->bindParam(':net_weight', $net_weight);
             $stmt->bindParam(':waste_percentage', $waste_percentage);
+            $stmt->bindParam(':commercial_presentation', $commercial_presentation);
 
             $calories = $data['calories'] ?? 0.00;
             $proteins = $data['proteins'] ?? 0.00;
@@ -349,6 +351,7 @@ class ItemController
                         gross_weight = :gross_weight,
                         net_weight = :net_weight,
                         waste_percentage = :waste_percentage,
+                        commercial_presentation = :commercial_presentation,
                         calories = :calories,
                         proteins = :proteins,
                         carbohydrates = :carbohydrates,
@@ -390,10 +393,12 @@ class ItemController
             $exchange_weight_g = !empty($data['exchange_weight_g']) ? $data['exchange_weight_g'] : 0.00;
             $stmt->bindParam(':exchange_group_id', $exchange_group_id);
             $stmt->bindParam(':exchange_weight_g', $exchange_weight_g);
+            $commercial_presentation = $data['commercial_presentation'] ?? 100.00;
 
             $stmt->bindParam(':gross_weight', $data['gross_weight']);
             $stmt->bindParam(':net_weight', $data['net_weight']);
             $stmt->bindParam(':waste_percentage', $data['waste_percentage']);
+            $stmt->bindParam(':commercial_presentation', $commercial_presentation);
             $stmt->bindParam(':calories', $data['calories']);
             $stmt->bindParam(':proteins', $data['proteins']);
             $stmt->bindParam(':carbohydrates', $data['carbohydrates']);

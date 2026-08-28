@@ -259,10 +259,11 @@ window.MinutasView = {
         try {
             Helper.alert('info', 'Cargando detalle del menú...');
             const res = await Helper.fetchAPI(`/menus/${menuId}`);
-            if (!res.success) throw new Exception(res.message);
+            if (!res.success) throw new Error(res.message);
 
             const menu = res.data;
             const items = menu.items || [];
+            const menuRecipes = menu.recipes || [];
 
             const { value: formValues } = await Swal.fire({
                 title: `<i class="fas fa-utensils me-2"></i> ${menuName}`,
@@ -270,44 +271,90 @@ window.MinutasView = {
                     <div class="text-start">
                         <div class="alert alert-info py-2 small mb-3">
                             <i class="fas fa-info-circle me-1"></i> 
-                            Aquí puede ajustar los gramajes individuales o automatizarlos desde una receta maestra.
+                            Minuta híbrida: Agregue recetas base (sub-ensambles) e insumos sueltos.
                         </div>
                         
                         <div class="row g-2 mb-3">
                             <div class="col-md-8">
-                                <label class="small fw-bold text-muted d-block mb-1">EXPLOSIÓN RÁPIDA (RECETA)</label>
                                 <select id="swal-recipe-id" class="form-select form-select-sm">
                                     <option value="">-- Seleccionar receta maestra --</option>
-                                    ${this.recipes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+                                      ${this.recipes.map(r => `<option value="${r.id}">${r.type === 'MINUTA' ? '👑' : '🍳'} ${r.name}</option>`).join('')}
                                 </select>
                             </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                <button class="btn btn-success btn-sm w-100 fw-bold" onclick="MinutasView.innerExplodeRecipe(${menuId})">
-                                    <i class="fas fa-bomb me-1"></i> Explosionar
+                            <div class="col-md-4 d-flex gap-1">
+                                <button class="btn btn-primary btn-sm flex-fill fw-bold" onclick="MinutasView.addRecipeRow()">
+                                    <i class="fas fa-plus"></i> Vincular
+                                </button>
+                                <button class="btn btn-warning btn-sm fw-bold flex-fill" onclick="MinutasView.innerExplodeRecipe(${menuId})" title="Explosionar a insumos">
+                                    <i class="fas fa-bomb"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="table-responsive border rounded" style="max-height: 250px;">
-                            <table class="table table-sm table-hover mb-0" id="swal-items-table">
-                                <thead class="bg-light sticky-top">
-                                    <tr class="small text-muted">
-                                        <th>Insumo</th>
-                                        <th style="width: 80px;">Gramaje</th>
-                                        <th style="width: 40px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${items.map(it => `
-                                        <tr data-item-id="${it.item_id}">
-                                            <td class="small align-middle">${it.item_name}</td>
-                                            <td><input type="number" class="form-control form-control-sm item-qty" value="${it.standard_quantity}" step="0.01"></td>
-                                            <td class="text-center"><button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+                        <!-- Table for Linked Recipes -->
+                        <div class="mb-3">
+                            <label class="fw-bold text-primary small mb-1">Recetas Vinculadas (Sub-ensambles)</label>
+                            <div class="table-responsive border rounded mb-2" style="max-height: 120px; overflow-y: auto;">
+                                <table class="table table-sm table-hover mb-0" id="swal-recipes-table">
+                                    <thead class="bg-light sticky-top">
+                                        <tr class="small text-muted">
+                                            <th>Nombre de la Receta</th>
+                                            <th style="width: 40px;"></th>
                                         </tr>
-                                    `).join('')}
-                                    ${items.length === 0 ? '<tr><td colspan="3" class="text-center py-3 text-muted small">Sin ingredientes. Use la explosión o añada manualmente.</td></tr>' : ''}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        ${menuRecipes.map(r => `
+                                            <tr data-recipe-id="${r.recipe_id}">
+                                                <td class="small align-middle">${r.recipe_name}</td>
+                                                <td class="text-center"><button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Add Item Row -->
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-6">
+                                <select id="swal-item-id" class="form-select form-select-sm">
+                                    <option value="">-- Seleccionar Insumo Suelto --</option>
+                                    ${window.RecetarioView && window.RecetarioView.items ? window.RecetarioView.items.map(i => `<option value="${i.id}">${i.name}</option>`).join('') : ''}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" id="swal-item-qty" class="form-control form-control-sm" placeholder="Cantidad">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-success btn-sm w-100 fw-bold" onclick="MinutasView.addItemRow()">
+                                    <i class="fas fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Table for Loose Items -->
+                        <div>
+                            <label class="fw-bold text-success small mb-1">Insumos Sueltos Adicionales</label>
+                            <div class="table-responsive border rounded" style="max-height: 150px; overflow-y: auto;">
+                                <table class="table table-sm table-hover mb-0" id="swal-items-table">
+                                    <thead class="bg-light sticky-top">
+                                        <tr class="small text-muted">
+                                            <th>Insumo Suelto</th>
+                                            <th style="width: 80px;">Gramaje</th>
+                                            <th style="width: 40px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${items.map(it => `
+                                            <tr data-item-id="${it.item_id}">
+                                                <td class="small align-middle">${it.item_name}</td>
+                                                <td><input type="number" class="form-control form-control-sm item-qty" value="${it.standard_quantity}" step="0.01"></td>
+                                                <td class="text-center"><button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `,
@@ -317,16 +364,22 @@ window.MinutasView = {
                 cancelButtonText: 'Cancelar',
                 width: '600px',
                 preConfirm: () => {
-                    const rows = document.querySelectorAll('#swal-items-table tbody tr[data-item-id]');
+                    const recipeRows = document.querySelectorAll('#swal-recipes-table tbody tr[data-recipe-id]');
+                    const dataRecipes = [];
+                    recipeRows.forEach(row => {
+                        dataRecipes.push(row.dataset.recipeId);
+                    });
+
+                    const itemRows = document.querySelectorAll('#swal-items-table tbody tr[data-item-id]');
                     const dataItems = [];
-                    rows.forEach(row => {
+                    itemRows.forEach(row => {
                         dataItems.push({
                             item_id: row.dataset.itemId,
-                            quantity: row.querySelector('.item-qty').value,
-                            preparation: ''
+                            quantity: row.querySelector('.item-qty').value
                         });
                     });
-                    return { items: dataItems };
+
+                    return { recipes: dataRecipes, items: dataItems };
                 }
             });
 
@@ -348,6 +401,45 @@ window.MinutasView = {
         } catch (error) {
             Helper.alert('error', 'Error al gestionar el menú: ' + error.message);
         }
+    },
+
+    addRecipeRow() {
+        const select = document.getElementById('swal-recipe-id');
+        if (!select.value) return;
+        const name = select.options[select.selectedIndex].text;
+        
+        // Prevent duplicate
+        if (document.querySelector(`#swal-recipes-table tbody tr[data-recipe-id="${select.value}"]`)) return;
+
+        const tbody = document.querySelector('#swal-recipes-table tbody');
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr data-recipe-id="${select.value}">
+                <td class="small align-middle">${name}</td>
+                <td class="text-center"><button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+            </tr>
+        `);
+        select.value = '';
+    },
+
+    addItemRow() {
+        const select = document.getElementById('swal-item-id');
+        const qtyInput = document.getElementById('swal-item-qty');
+        if (!select.value || !qtyInput.value) return;
+        const name = select.options[select.selectedIndex].text;
+
+        // Prevent duplicate
+        if (document.querySelector(`#swal-items-table tbody tr[data-item-id="${select.value}"]`)) return;
+
+        const tbody = document.querySelector('#swal-items-table tbody');
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr data-item-id="${select.value}">
+                <td class="small align-middle">${name}</td>
+                <td><input type="number" class="form-control form-control-sm item-qty" value="${qtyInput.value}" step="0.01"></td>
+                <td class="text-center"><button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+            </tr>
+        `);
+        select.value = '';
+        qtyInput.value = '';
     },
 
     async innerExplodeRecipe(menuId) {
@@ -592,7 +684,7 @@ window.MinutasView = {
 
     getRecipeOptions(selectedId = null) {
         return `<option value="">-- Seleccionar --</option>` +
-            this.recipes.map(r => `<option value="${r.id}" ${r.id == selectedId ? 'selected' : ''}>${r.name} (${r.kcal || 0} kcal)</option>`).join('');
+            this.recipes.map(r => `<option value="${r.id}" ${r.id == selectedId ? 'selected' : ''}>${r.type === 'MINUTA' ? '👑' : '🍳'} ${r.name} (${r.kcal || 0} kcal)</option>`).join('');
     },
 
     addDayToTemplate() {

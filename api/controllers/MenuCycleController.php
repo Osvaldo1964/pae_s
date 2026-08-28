@@ -191,9 +191,27 @@ class MenuCycleController
                 $menu_id = $this->conn->lastInsertId();
 
                 foreach ($days_data[$template_day_to_use] as $recipe_info) {
-                    // Vinculamos la receta al menú diario en la tabla menu_recipes
+                    $rid = $recipe_info['recipe_id'];
+                    $rtid = $recipe_info['ration_type_id'];
+                    $mtype = $recipe_info['meal_type'];
+
+                    // Vinculamos la receta padre (Minuta o Subpreparacion)
                     $stmtMenuRec = $this->conn->prepare("INSERT INTO menu_recipes (menu_id, recipe_id, ration_type_id, meal_type) VALUES (?, ?, ?, ?)");
-                    $stmtMenuRec->execute([$menu_id, $recipe_info['recipe_id'], $recipe_info['ration_type_id'], $recipe_info['meal_type']]);
+                    $stmtMenuRec->execute([$menu_id, $rid, $rtid, $mtype]);
+
+                    // Revisar si es una MINUTA para vincular sus subpreparaciones
+                    $stmtType = $this->conn->prepare("SELECT type FROM recipes WHERE id = ?");
+                    $stmtType->execute([$rid]);
+                    $rData = $stmtType->fetch(PDO::FETCH_ASSOC);
+
+                    if ($rData && $rData['type'] === 'MINUTA') {
+                        $stmtSub = $this->conn->prepare("SELECT child_recipe_id FROM recipe_subpreparations WHERE parent_recipe_id = ?");
+                        $stmtSub->execute([$rid]);
+                        while ($sub = $stmtSub->fetch(PDO::FETCH_ASSOC)) {
+                            // Vinculamos la subpreparacion al mismo menú
+                            $stmtMenuRec->execute([$menu_id, $sub['child_recipe_id'], $rtid, $mtype]);
+                        }
+                    }
                 }
             }
 
@@ -272,7 +290,8 @@ class MenuCycleController
                                 ri.age_group, 
                                 ri.item_id, 
                                 ri.quantity,
-                                mu.conversion_factor
+                                mu.conversion_factor,
+                                i.commercial_presentation
                                FROM menu_recipes mr
                                JOIN recipe_items ri ON mr.recipe_id = ri.recipe_id
                                JOIN items i ON ri.item_id = i.id
@@ -282,18 +301,39 @@ class MenuCycleController
             $stmtExp->execute([$id, $pae_id]);
             $recipeDetails = $stmtExp->fetchAll(PDO::FETCH_ASSOC);
 
-            if (!$recipeDetails)
-                throw new Exception("El ciclo no tiene recetas o ingredientes configurados.");
+            // 4.5 Obtener explosión de insumos sueltos (menu_items)
+            $queryLoose = "SELECT 
+                            m.ration_type_id, 
+                            'ALL' as age_group, 
+                            mi.item_id, 
+                            mi.standard_quantity as quantity,
+                            mu.conversion_factor,
+                            i.commercial_presentation
+                           FROM menu_items mi
+                           JOIN menus m ON mi.menu_id = m.id
+                           JOIN items i ON mi.item_id = i.id
+                           JOIN measurement_units mu ON i.measurement_unit_id = mu.id
+                           WHERE m.cycle_id = ? AND m.pae_id = ?";
+            $stmtLoose = $this->conn->prepare($queryLoose);
+            $stmtLoose->execute([$id, $pae_id]);
+            $looseDetails = $stmtLoose->fetchAll(PDO::FETCH_ASSOC);
+
+            $allExplosion = array_merge($recipeDetails, $looseDetails);
+
+            if (!$allExplosion)
+                throw new Exception("El ciclo no tiene recetas o insumos sueltos configurados.");
 
             // 5. Motor de Cálculo Optimizado (Cruce Matriz O(N+M))
             $projections = []; // [branch_id][item_id] => quantity
+            $commercialPresentations = []; // [item_id] => commercial_presentation
             $totalBeneficiaries = 0;
 
             // 5.1 Pre-agrupar recetas por ración y edad para evitar el bucle N*M
             $groupedRecipes = [];
-            foreach ($recipeDetails as $recipe) {
+            foreach ($allExplosion as $recipe) {
                 $key = $recipe['ration_type_id'] . '|' . $recipe['age_group'];
                 $groupedRecipes[$key][] = $recipe;
+                $commercialPresentations[$recipe['item_id']] = floatval($recipe['commercial_presentation']);
             }
 
             foreach ($populations as $pop) {
@@ -306,31 +346,45 @@ class MenuCycleController
 
                 $key = $ration_type_id . '|' . $age_group;
 
-                if (isset($groupedRecipes[$key])) {
-                    foreach ($groupedRecipes[$key] as $recipe) {
-                        $item_id = $recipe['item_id'];
-                        $conversion_factor = (isset($recipe['conversion_factor']) && $recipe['conversion_factor'] > 0)
-                            ? $recipe['conversion_factor']
-                            : 1;
+                // Check for exact age group match OR 'ALL' for loose items
+                $keys_to_check = [
+                    $ration_type_id . '|' . $age_group,
+                    $ration_type_id . '|ALL'
+                ];
 
-                        $quantity = ($recipe['quantity'] * $pop['total']) / $conversion_factor;
+                foreach ($keys_to_check as $key) {
+                    if (isset($groupedRecipes[$key])) {
+                        foreach ($groupedRecipes[$key] as $recipe) {
+                            $item_id = $recipe['item_id'];
+                            $conversion_factor = (isset($recipe['conversion_factor']) && $recipe['conversion_factor'] > 0)
+                                ? $recipe['conversion_factor']
+                                : 1;
 
-                        if (!isset($projections[$branch_id]))
-                            $projections[$branch_id] = [];
-                        if (!isset($projections[$branch_id][$item_id]))
-                            $projections[$branch_id][$item_id] = 0;
+                            $quantity = ($recipe['quantity'] * $pop['total']) / $conversion_factor;
 
-                        $projections[$branch_id][$item_id] += $quantity;
+                            if (!isset($projections[$branch_id]))
+                                $projections[$branch_id] = [];
+                            if (!isset($projections[$branch_id][$item_id]))
+                                $projections[$branch_id][$item_id] = 0;
+
+                            $projections[$branch_id][$item_id] += $quantity;
+                        }
                     }
                 }
             }
 
-            // 6. Guardar Proyecciones Congeladas
+            // 6. Guardar Proyecciones Congeladas (Aplicando redondeo de presentación comercial)
             $stmtInsert = $this->conn->prepare("INSERT INTO cycle_projections (cycle_id, branch_id, item_id, total_quantity, beneficiary_count) VALUES (?, ?, ?, ?, ?)");
             foreach ($projections as $branch_id => $items) {
-                foreach ($items as $item_id => $qty) {
-                    // Contamos beneficiarios aproximados para esta sede (opcional, para trazabilidad)
-                    $stmtInsert->execute([$id, $branch_id, $item_id, $qty, $totalBeneficiaries]);
+                foreach ($items as $item_id => $raw_qty) {
+                    $presentation = $commercialPresentations[$item_id] ?? 1;
+                    if ($presentation <= 0) $presentation = 1;
+                    
+                    // Redondear cantidad cruda hacia arriba según la presentación comercial
+                    $packages = ceil($raw_qty / $presentation);
+                    $rounded_qty = $packages * $presentation;
+
+                    $stmtInsert->execute([$id, $branch_id, $item_id, $rounded_qty, $totalBeneficiaries]);
                 }
             }
 

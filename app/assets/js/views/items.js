@@ -351,27 +351,33 @@ window.ItemsView = {
                                                 <label class="form-label">Registro Sanitario (RSA/RSNV)</label>
                                                 <input type="text" class="form-control" name="sanitary_registry" placeholder="Ej: RSA-123456">
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
+                                                <label class="form-label" title="Equivalencia en unidad base (ej. 250 si viene de a 250g/ml)">Pres. Comercial</label>
+                                                <input type="text" class="form-control text-end" name="commercial_presentation" value="100.00" 
+                                                       onfocus="ItemsView.unformatInput(this)" onblur="ItemsView.formatInput(this, 2)">
+                                                <small class="text-muted">Unidad de empaque</small>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <label class="form-label">Costo Unitario ($)</label>
                                                 <input type="text" class="form-control text-end" name="unit_cost" value="0.00" 
                                                        onfocus="ItemsView.unformatInput(this)" onblur="ItemsView.formatInput(this, 2)">
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
                                                 <label class="form-label">Vida Útil (días)</label>
                                                 <input type="text" class="form-control text-end" name="shelf_life_days" placeholder="Ej: 30" 
                                                        onfocus="ItemsView.unformatInput(this)" onblur="ItemsView.formatInput(this, 0)">
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-md-3">
                                                 <div class="form-check form-switch mt-2">
                                                     <input class="form-check-input" type="checkbox" name="requires_refrigeration" id="refrigeration">
                                                     <label class="form-check-label" for="refrigeration">
-                                                        <i class="fas fa-snowflake text-info me-1"></i>Requiere Refrigeración
+                                                        <i class="fas fa-snowflake text-info me-1"></i>Refrigeración
                                                     </label>
                                                 </div>
                                                 <div class="form-check form-switch mt-2">
                                                     <input class="form-check-input" type="checkbox" name="is_perishable" id="perishable">
                                                     <label class="form-check-label" for="perishable">
-                                                        <i class="fas fa-clock text-danger me-1"></i>Es Perecedero
+                                                        <i class="fas fa-clock text-danger me-1"></i>Perecedero
                                                     </label>
                                                 </div>
                                             </div>
@@ -592,7 +598,7 @@ window.ItemsView = {
                     'carbohydrates', 'fats', 'fiber', 'iron', 'calcium',
                     'sodium', 'vitamin_a', 'vitamin_c', 'unit_cost', 'shelf_life_days',
                     'is_local_purchase', 'requires_refrigeration', 'is_perishable',
-                    'exchange_weight_g'
+                    'exchange_weight_g', 'commercial_presentation'
                 ];
                 if (numericFields.includes(key)) {
                     data[key] = value.replace(/,/g, '');

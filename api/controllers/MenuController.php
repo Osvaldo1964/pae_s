@@ -155,14 +155,27 @@ class MenuController
                         fg.name as food_group
                       FROM menu_items mi
                       JOIN items i ON mi.item_id = i.id
-                      JOIN measurement_units mu ON i.measurement_unit_id = mu.id
-                      JOIN food_groups fg ON i.food_group_id = fg.id
+                      LEFT JOIN measurement_units mu ON i.measurement_unit_id = mu.id
+                      LEFT JOIN food_groups fg ON i.food_group_id = fg.id
                       WHERE mi.menu_id = :menu_id
-                      ORDER BY mi.display_order";
+                      ORDER BY i.name";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':menu_id', $menu_id);
             $stmt->execute();
             $menu['items'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Recetas vinculadas (menu_recipes)
+            $queryRecipes = "SELECT 
+                                mr.id as menu_recipe_id,
+                                mr.recipe_id,
+                                r.name as recipe_name
+                             FROM menu_recipes mr
+                             JOIN recipes r ON mr.recipe_id = r.id
+                             WHERE mr.menu_id = :menu_id";
+            $stmtR = $this->conn->prepare($queryRecipes);
+            $stmtR->bindParam(':menu_id', $menu_id);
+            $stmtR->execute();
+            $menu['recipes'] = $stmtR->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode([
                 'success' => true,
@@ -216,12 +229,12 @@ class MenuController
         try {
             $data = json_decode(file_get_contents("php://input"), true);
             $items = $data['items'] ?? [];
+            $recipes = $data['recipes'] ?? []; // IDs de las recetas seleccionadas
             $pae_id = $this->getPaeIdFromToken();
 
             $this->conn->beginTransaction();
 
-            // 1. Validar que todos los items existan en la tabla 'items' y pertenezcan al PAE
-            // Esto evita la inconsistencia detectada donde se enviaban IDs de recetas
+            // 1. Validar ítems sueltos
             if (!empty($items)) {
                 $itemIds = array_column($items, 'item_id');
                 $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
@@ -231,16 +244,28 @@ class MenuController
 
                 foreach ($items as $it) {
                     if (!in_array($it['item_id'], $validIds)) {
-                        throw new Exception("El ID de ingrediente " . $it['item_id'] . " no es válido o no pertenece a este programa. Asegúrese de no estar enviando IDs de recetas.");
+                        throw new Exception("El ID de ingrediente " . $it['item_id'] . " no es válido o no pertenece a este programa.");
                     }
                 }
             }
 
-            // 2. Limpiar ingredientes actuales
-            $query = "DELETE FROM menu_items WHERE menu_id = :menu_id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindValue(':menu_id', $menu_id, PDO::PARAM_INT);
-            $stmt->execute();
+            // 1.5 Validar recetas
+            if (!empty($recipes)) {
+                $placeholdersR = implode(',', array_fill(0, count($recipes), '?'));
+                $stmtCheckR = $this->conn->prepare("SELECT id FROM recipes WHERE id IN ($placeholdersR) AND pae_id = ?");
+                $stmtCheckR->execute(array_merge($recipes, [$pae_id]));
+                $validRecs = $stmtCheckR->fetchAll(PDO::FETCH_COLUMN);
+
+                foreach ($recipes as $rid) {
+                    if (!in_array($rid, $validRecs)) {
+                        throw new Exception("El ID de receta " . $rid . " no es válido o no pertenece a este programa.");
+                    }
+                }
+            }
+
+            // 2. Limpiar ingredientes actuales y recetas actuales
+            $this->conn->prepare("DELETE FROM menu_items WHERE menu_id = :menu_id")->execute([':menu_id' => $menu_id]);
+            $this->conn->prepare("DELETE FROM menu_recipes WHERE menu_id = :menu_id")->execute([':menu_id' => $menu_id]);
 
             // 3. Agrupar ingredientes duplicados antes de insertar
             $groupedItems = [];
@@ -261,7 +286,7 @@ class MenuController
                 }
             }
 
-            // 4. Insertar nuevos ingredientes
+            // 4. Insertar nuevos ingredientes sueltos
             $query = "INSERT INTO menu_items (menu_id, item_id, standard_quantity, preparation_method) 
                       VALUES (:menu_id, :item_id, :quantity, :preparation)";
             $stmt = $this->conn->prepare($query);
@@ -274,22 +299,26 @@ class MenuController
                 $stmt->execute();
             }
 
-            // 5. Recalcular Totales Nutricionales
-            $queryTotal = "UPDATE menus m 
-                           SET 
-                            total_calories = (SELECT IFNULL(SUM(mi.standard_quantity * i.calories / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m1),
-                            total_proteins = (SELECT IFNULL(SUM(mi.standard_quantity * i.proteins / 100) , 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m2),
-                            total_carbohydrates = (SELECT IFNULL(SUM(mi.standard_quantity * i.carbohydrates / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m3),
-                            total_fats = (SELECT IFNULL(SUM(mi.standard_quantity * i.fats / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m4)
-                           WHERE id = :id";
+            // 4.5 Insertar recetas seleccionadas
+            if (!empty($recipes)) {
+                // Sacamos datos básicos del menú para copiar ration_type y meal_type
+                $stmtM = $this->conn->prepare("SELECT meal_type, ration_type_id FROM menus WHERE id = ?");
+                $stmtM->execute([$menu_id]);
+                $mInfo = $stmtM->fetch(PDO::FETCH_ASSOC);
 
-            $stmtTotal = $this->conn->prepare($queryTotal);
-            $stmtTotal->bindValue(':m1', $menu_id, PDO::PARAM_INT);
-            $stmtTotal->bindValue(':m2', $menu_id, PDO::PARAM_INT);
-            $stmtTotal->bindValue(':m3', $menu_id, PDO::PARAM_INT);
-            $stmtTotal->bindValue(':m4', $menu_id, PDO::PARAM_INT);
-            $stmtTotal->bindValue(':id', $menu_id, PDO::PARAM_INT);
-            $stmtTotal->execute();
+                $stmtMR = $this->conn->prepare("INSERT INTO menu_recipes (menu_id, recipe_id, meal_type, ration_type_id) VALUES (?, ?, ?, ?)");
+                foreach ($recipes as $rid) {
+                    $stmtMR->execute([
+                        $menu_id,
+                        $rid,
+                        $mInfo['meal_type'],
+                        $mInfo['ration_type_id']
+                    ]);
+                }
+            }
+
+            // 5. Recalcular Totales Nutricionales
+            $this->recalculateMenuNutrition($menu_id);
 
             $this->conn->commit();
             echo json_encode(['success' => true, 'message' => 'Ingredientes actualizados y nutrición recalculada']);
@@ -518,15 +547,47 @@ class MenuController
 
     private function recalculateMenuNutrition($menu_id)
     {
-        $queryTotal = "UPDATE menus m 
-                       SET 
-                        total_calories = (SELECT IFNULL(SUM(mi.standard_quantity * i.calories / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m1),
-                        total_proteins = (SELECT IFNULL(SUM(mi.standard_quantity * i.proteins / 100) , 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m2),
-                        total_carbohydrates = (SELECT IFNULL(SUM(mi.standard_quantity * i.carbohydrates / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m3),
-                        total_fats = (SELECT IFNULL(SUM(mi.standard_quantity * i.fats / 100), 0) FROM menu_items mi JOIN items i ON mi.item_id = i.id WHERE mi.menu_id = :m4)
-                       WHERE id = :id";
+        // 1. Obtener el grupo etario del menú
+        $stmtMenu = $this->conn->prepare("SELECT age_group FROM menus WHERE id = ?");
+        $stmtMenu->execute([$menu_id]);
+        $age_group = $stmtMenu->fetchColumn() ?: 'SECUNDARIA';
 
+        // 2. Sumar nutrición de ítems sueltos (con merma)
+        $qItems = "SELECT 
+                    IFNULL(SUM((mi.standard_quantity * (1 - COALESCE(i.waste_percentage,0)/100)) * i.calories / 100), 0) as cal,
+                    IFNULL(SUM((mi.standard_quantity * (1 - COALESCE(i.waste_percentage,0)/100)) * i.proteins / 100), 0) as pro,
+                    IFNULL(SUM((mi.standard_quantity * (1 - COALESCE(i.waste_percentage,0)/100)) * i.carbohydrates / 100), 0) as car,
+                    IFNULL(SUM((mi.standard_quantity * (1 - COALESCE(i.waste_percentage,0)/100)) * i.fats / 100), 0) as fat
+                   FROM menu_items mi
+                   JOIN items i ON mi.item_id = i.id
+                   WHERE mi.menu_id = ?";
+        $stmtItems = $this->conn->prepare($qItems);
+        $stmtItems->execute([$menu_id]);
+        $nutItems = $stmtItems->fetch(PDO::FETCH_ASSOC);
+
+        // 3. Sumar nutrición de recetas asignadas (usando recipe_nutrition)
+        $qRecipes = "SELECT 
+                      IFNULL(SUM(rn.total_calories), 0) as cal,
+                      IFNULL(SUM(rn.total_proteins), 0) as pro,
+                      IFNULL(SUM(rn.total_carbohydrates), 0) as car,
+                      IFNULL(SUM(rn.total_fats), 0) as fat
+                     FROM menu_recipes mr
+                     JOIN recipe_nutrition rn ON mr.recipe_id = rn.recipe_id
+                     WHERE mr.menu_id = ? AND rn.age_group = ?";
+        $stmtRecipes = $this->conn->prepare($qRecipes);
+        $stmtRecipes->execute([$menu_id, $age_group]);
+        $nutRecipes = $stmtRecipes->fetch(PDO::FETCH_ASSOC);
+
+        // 4. Sumar ambos y actualizar menú
+        $total_cal = $nutItems['cal'] + $nutRecipes['cal'];
+        $total_pro = $nutItems['pro'] + $nutRecipes['pro'];
+        $total_car = $nutItems['car'] + $nutRecipes['car'];
+        $total_fat = $nutItems['fat'] + $nutRecipes['fat'];
+
+        $queryTotal = "UPDATE menus 
+                       SET total_calories = ?, total_proteins = ?, total_carbohydrates = ?, total_fats = ?
+                       WHERE id = ?";
         $stmtTotal = $this->conn->prepare($queryTotal);
-        $stmtTotal->execute([':m1' => $menu_id, ':m2' => $menu_id, ':m3' => $menu_id, ':m4' => $menu_id, ':id' => $menu_id]);
+        $stmtTotal->execute([$total_cal, $total_pro, $total_car, $total_fat, $menu_id]);
     }
 }

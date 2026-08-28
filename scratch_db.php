@@ -21,4 +21,11 @@ spl_autoload_register(function ($class_name) {
 use Config\Database;
 
 $db = Database::getInstance()->getConnection();
-$stmt = $db->query("DESCRIBE items;"); print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
+
+$sql2 = file_get_contents('sql/34_hierarchical_recipes.sql');
+try {
+    $db->exec($sql2);
+    echo "Migration 34 completed successfully.\n";
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
