@@ -145,7 +145,8 @@ const App = {
                     'reports-beneficiarios': 'Listado de Beneficiarios',
                     'reports-attendance': 'Control de Asistencia',
                     'reports-carnets': 'Impresión de Carnets',
-                    'reports-qr-courses': 'Generar QR Cursos'
+                    'reports-qr-courses': 'Generar QR Cursos',
+                    'reports-kardex-productos': 'Kardex de Productos'
                 };
 
                 if (reportNames[route]) {
@@ -203,6 +204,7 @@ const App = {
                         'reports-recetas': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-minutas': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-ciclos-analisis': { name: 'Alimentación', route: 'reports-ali' },
+                        'reports-kardex-productos': { name: 'Alimentación', route: 'reports-ali' },
                         'reports-presupuesto': { name: 'Financiero', route: 'reports-fin' },
                         'reports-costs': { name: 'Financiero', route: 'reports-fin' },
                         'reports-ejecucion': { name: 'Financiero', route: 'reports-fin' },
@@ -324,6 +326,7 @@ const App = {
                     'reports-recetas': 'reports_recetas',
                     'reports-minutas': 'reports_minutas',
                     'reports-ciclos-analisis': 'reports_ciclos_analisis',
+                    'reports-kardex-productos': 'reports_kardex_productos',
                     'reports-costs': 'reports_costs',
                     'reports-carnets': 'reports_carnets',
                     'reports-qr-courses': 'reports_qr_courses',
@@ -992,7 +995,8 @@ const App = {
                 { name: 'Impresión de Insumos', route: 'reports-insumos', icon: 'fas fa-carrot', description: 'Listado maestro de insumos y nutrientes', color: 'success' },
                 { name: 'Impresión de Recetas', route: 'reports-recetas', icon: 'fas fa-book-open', description: 'Fichas técnicas de preparación', color: 'success' },
                 { name: 'Minutas x Ciclo x Sede', route: 'reports-minutas', icon: 'fas fa-calendar-alt', description: 'Programación detallada por institución', color: 'success' },
-                { name: 'Análisis de Ciclos', route: 'reports-ciclos-analisis', icon: 'fas fa-chart-pie', description: 'Verificar cumplimiento de compras, entradas y salidas por ciclo', color: 'success' }
+                { name: 'Análisis de Ciclos', route: 'reports-ciclos-analisis', icon: 'fas fa-chart-pie', description: 'Verificar cumplimiento de compras, entradas y salidas por ciclo', color: 'success' },
+                { name: 'Kardex de Productos', route: 'reports-kardex-productos', icon: 'fas fa-clipboard-check', description: 'Requerimientos diarios y control de entrega por sede', color: 'success' }
             ];
         } else if (category === 'reports-fin') {
             title = 'Reportes Financieros';

@@ -593,6 +593,9 @@ if ($resource === 'auth') {
     if ($action === 'needs' && $id_param) {
         $controller = new \Controllers\NeedsReportController();
         $controller->generate($id_param);
+    } elseif ($action === 'kardex-productos') {
+        $controller = new \Controllers\KardexReportController();
+        $controller->generate();
     }
 } elseif ($resource === 'terceros') {
     $controller = new \Controllers\TerceroController();

@@ -39,6 +39,11 @@
 ├── 📊 Reportes
 │   ├── 📅 Consumos (Reporte QR)
 │   ├── 🥯 Alimentación (Hub)
+│   │   ├── 🥕 Impresión de Insumos
+│   │   ├── 📖 Impresión de Recetas
+│   │   ├── 📅 Minutas x Ciclo x Sede
+│   │   ├── 📊 Análisis de Ciclos
+│   │   └── 📋 Kardex de Productos ⭐ (Planilla Oficial de Entrega por Sede)
 │   ├── 💰 Financiero (Hub)
 │   ├── 📋 Administrativos (Hub)
 │   │   ├── 👥 Control de Asistencia

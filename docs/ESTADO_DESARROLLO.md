@@ -1,7 +1,7 @@
 # Estado de Desarrollo - PAE Control WebApp
 
-**Última actualización**: 09 de Julio 2026 (v1.9.16)
-**Versión Doc:** 1.9.16 | **Versión Código:** 1.9.16 (Ajustes de Presupuesto, Categorías de Gastos y Reportes Financieros)
+**Última actualización**: 11 de Septiembre 2026 (v1.9.24)
+**Versión Doc:** 1.9.24 | **Versión Código:** 1.9.24 (Reporte Kardex de Productos, Planilla Oficial de Entrega y Paginación)
 
 ---
 
@@ -245,6 +245,15 @@
 - [x] **Libro Auxiliar de Movimientos [v1.9.16]:**
   - Listado de movimientos de costos/gastos con filtros cruzados por Rubro específico, Tipo de movimiento y Rango de fechas.
   - Fila de totales sumando la ejecución acumulada.
+- [x] **Reporte: Kardex de Productos (Planilla Oficial de Entrega por Sede) [v1.9.24]:**
+  - **Backend (`KardexReportController.php`):** Motor de cálculo cruzado de requerimientos diarios de alimentos por ciclo y sede física.
+  - Multiplica raciones programadas por ingredientes de recetas según el censo de beneficiarios discriminado por grupo etario (Preescolar, Primaria A, Primaria B, Secundaria y Media).
+  - Conversión estandarizada a unidades de entrega de almacén (KG, L, UND).
+  - **Planilla Oficial de Impresión Física:** Formato institucional con logos (Entidad y Operador), caja de metadatos, resumen censal por niveles educativos, matriz de días con subcolumnas de `CANT` (requerido) y `SALDO DÍA` (control en campo), y bloque simétrico de firmas y observaciones.
+  - **Diseño Parejo y Ancho 100%:** Alineación de extremo a extremo sin desbordes.
+  - **Paginación Controlada a Máximo 43 Ítems:** División limpia de hojas con indicador `HOJA: X de Y` y firmas exclusivas en la última hoja.
+  - **Exclusión de Sedes Vacías:** Omisión automática en la tirada de impresión de aquellas sedes sin alimentos asignados para evitar gasto innecesario de papel y firmas en blanco.
+  - **Exportación MS Excel:** Generación estructurada de la matriz para análisis administrativo.
 - [x] **Encabezados Institucionales y Logos [v1.9.16]:**
   - Encabezados de impresión formales con el logo de la Entidad (izquierda), datos del contrato y programa activo (centro) y logo del Operador (derecha).
   - Remoción de textos automáticos del navegador (`@page { margin: 0; }`) y optimización de tamaños de fuente en el auxiliar a `0.65rem`.
@@ -432,19 +441,25 @@
 
 ## 📂 Archivos Clave
 
-### Backend - Almacén
+### Backend - Almacén y Reportes
 - `api/controllers/InventoryController.php` - Gestión de stock, movimientos y costos
 - `api/controllers/PurchaseOrderController.php` - Órdenes de compra
 - `api/controllers/NeedsReportController.php` - Motor principal de recálculo de necesidades de insumos (Explosión de Menús)
-- `api/index.php` - Rutas de inventario (líneas 410-430)
+- `api/controllers/KardexReportController.php` - Generador oficial de Kardex de Productos por sede y cálculo de requerimientos
+- `api/index.php` - Rutas de API y enrutamiento central
 
-### Frontend - Almacén
-- `app/assets/js/views/almacen.js` - Vista completa de gestión
+### Frontend - Almacén y Reportes
+- `app/assets/js/views/almacen.js` - Vista completa de gestión de stock
 - `app/assets/js/views/compras.js` - Órdenes de compra
 - `app/assets/js/views/cotizaciones.js` - Módulo de cotizaciones para compras
 - `app/assets/js/views/remisiones_entradas.js` - Ingreso logístico de insumos
 - `app/assets/js/views/salidas.js` - Salidas logísticas de inventario
-- `app/assets/js/core/app.js` - Router
+- `app/assets/js/views/reports_kardex_productos.js` - Planilla oficial de Kardex, vista interactiva, impresión paginada (máx 43 ítems) y exportación Excel
+- `app/assets/js/views/reports_insumos.js` - Reporte maestro de insumos
+- `app/assets/js/views/reports_recetas.js` - Fichas técnicas de preparación
+- `app/assets/js/views/reports_minutas.js` - Carteleras y minutas por ciclo y sede
+- `app/assets/js/views/reports_ciclos_analisis.js` - Análisis de ciclos y cumplimiento logístico
+- `app/assets/js/core/app.js` - Router y sub-hubs de reportes
 
 ### Base de Datos - Almacén
 - `sql/inventory_schema.sql` - Estructura de inventario

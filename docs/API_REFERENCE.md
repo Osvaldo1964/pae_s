@@ -703,6 +703,74 @@ Authorization: Bearer {token}
 
 ---
 
+---
+
+## 📋 Reportes
+
+### GET /reports/kardex-productos
+Generar la matriz y planilla oficial de Kardex de Productos con requerimientos diarios de alimentos por sede educativa y grupos de edad/nivel educativo.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+```
+
+**Parámetros Query:**
+- `cycle_id` (integer, requerido): ID del ciclo de menú a consultar.
+- `school_id` (integer, opcional): Filtrar por una institución educativa específica.
+- `branch_id` (integer, opcional): Filtrar por una sede física específica.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "program": {
+    "id": 1,
+    "name": "PAE FACATATIVÁ 2026",
+    "operator_name": "UT NUTRIFACA",
+    "operator_nit": "900.000.000-0"
+  },
+  "cycle": {
+    "id": 10,
+    "name": "Ciclo 1",
+    "start_date": "2026-08-24",
+    "end_date": "2026-08-28"
+  },
+  "days": [
+    { "day_number": 1, "menu_id": 15, "name": "Día 1 - Lunes 24/08" }
+  ],
+  "reports": [
+    {
+      "school": { "id": 5, "name": "I.E.M. JUAN XXIII" },
+      "branch": { "id": 12, "name": "ESCUELA RURAL SERREZUELA" },
+      "census": { "total": 44, "preescolar": 0, "primaria_a": 22, "primaria_b": 22, "secundaria": 0, "media": 0 },
+      "items": [
+        {
+          "item_no": 1,
+          "item_id": 4,
+          "name": "ARROZ",
+          "unit": "KG",
+          "total_quantity": 82.0,
+          "daily_quantities": { "1": 16.4, "2": 16.4, "3": 16.4, "4": 16.4, "5": 16.4 }
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### GET /reports/needs/{cycle_id}
+Calcular la explosión de víveres y necesidades consolidadas de insumos por ciclo de menú.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+```
+
+---
+
 ## 📊 Códigos de Estado HTTP
 
 | Código | Significado | Uso |
@@ -731,4 +799,4 @@ Todos los errores siguen el mismo formato:
 
 ---
 
-**Última Actualización:** 26 de Marzo de 2026, 10:00 AM
+**Última Actualización:** 11 de Septiembre de 2026, 10:30 AM
