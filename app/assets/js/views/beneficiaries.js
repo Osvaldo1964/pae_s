@@ -1961,7 +1961,7 @@ var BeneficiariesView = {
         }
 
         try {
-            const branches = await Helper.fetchAPI(`/schools/${schoolId}/branches`);
+            const branches = await Helper.fetchAPI(`/branches?school_id=${schoolId}`);
             if (Array.isArray(branches)) {
                 branches.forEach(b => {
                     const opt = document.createElement('option');
@@ -2058,7 +2058,10 @@ var BeneficiariesView = {
             const previewText = document.getElementById('massive-preview-text');
             if (previewText) previewText.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Calculando...';
 
-            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-preview', 'POST', payload);
+            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-preview', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
 
             if (res.success) {
                 const total = res.total || 0;
@@ -2145,7 +2148,10 @@ var BeneficiariesView = {
         Helper.loading(true, 'Aplicando ajustes masivos de ración...');
 
         try {
-            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-apply', 'POST', payload);
+            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-apply', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
             Helper.loading(false);
 
             if (res.success) {

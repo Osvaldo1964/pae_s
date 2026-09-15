@@ -48,3 +48,25 @@ El sistema soporta importación de archivos `.csv` delimitados por comas o punto
 Módulo de exportación gráfica de ID estudiantil para lectura de raciones mediante códigos de barras bidimensionales.
 - **Token:** Se estructura como `PAE:[ID_Beneficiario]:[NumeroDocumento]`.
 - **Lógica de renderizado:** Ventana emergente (modal_carnet) preparada con @media queries para impresión limpia, aislando la tarjeta en el documento a la hora de mandar a imprimir al dispositivo.
+
+---
+
+## ⚡ Ajuste Masivo de Tipos de Ración (v1.9.26+)
+Herramienta administrativa de alta eficiencia diseñada para optimizar los cambios de minutas o esquemas alimentarios a gran escala sin necesidad de editar beneficiario por beneficiario.
+
+### Modos de Operación:
+1. **Reemplazar Ración:** Busca a todos los estudiantes dentro del filtro que posean una ración origen específica (ej: `CCT DESAYUNO 1`) y la sustituye por una nueva ración destino (ej: `CST DESAYUNO 5`).
+2. **Asignar / Marcar:** Asigna un tipo de ración a todos los estudiantes seleccionados garantizando que no se dupliquen registros.
+3. **Desmarcar / Quitar:** Retira un tipo de ración específico de todos los estudiantes coincidentes.
+
+### Filtros en Cascada Disponibles:
+- **Institución Educativa (Colegio):** Filtro general o específico.
+- **Sede Educativa:** Carga dinámica según la institución seleccionada.
+- **Grado y Grupo:** Permite focalizaciones quirúrgicas por aula.
+- **Estado:** Filtrado por defecto a estudiantes `ACTIVOS`.
+
+### Seguridad Operativa y Transaccional:
+- **Vista Previa en Tiempo Real (`POST /api/beneficiarios/bulk-ration-preview`):** Calcula dinámicamente cuántos beneficiarios exactos serán afectados y despliega una muestra de estudiantes antes de ejecutar.
+- **Ejecución Atómica (`POST /api/beneficiarios/bulk-ration-apply`):** Ejecuta la operación bajo una transacción SQL que sincroniza tanto la tabla de derechos múltiples (`beneficiary_ration_rights`) como la tabla principal `beneficiaries` (`ration_type_id`).
+- **Doble Confirmación con SweetAlert2:** Advierte al usuario con el número exacto de estudiantes a modificar antes del commit.
+

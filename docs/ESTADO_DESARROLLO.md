@@ -1,7 +1,7 @@
 # Estado de Desarrollo - PAE Control WebApp
 
-**Última actualización**: 11 de Septiembre 2026 (v1.9.24)
-**Versión Doc:** 1.9.24 | **Versión Código:** 1.9.24 (Reporte Kardex de Productos, Planilla Oficial de Entrega y Paginación)
+**Última actualización**: 15 de Septiembre 2026 (v1.9.28)
+**Versión Doc:** 1.9.28 | **Versión Código:** 1.9.28 (Unificación BaseController, Ajuste Masivo de Raciones y Beneficiarios en Explosión de Insumos)
 
 ---
 
@@ -88,6 +88,8 @@
 - [x] Integración con códigos DANE
 - [x] Autorización de datos (Habeas Data)
 - [x] **Impresión de Listas:** Planillas de asistencia filtradas por sede/grado
+- [x] **Ajuste Masivo de Tipos de Ración (v1.9.26+):** Modal interactivo con previsualización en tiempo real (`bulk-ration-preview`) y ejecución atómica (`bulk-ration-apply`) para sustituir, asignar o desmarcar raciones por colegio, sede, grado y grupo.
+- [x] **Explosión de Insumos con Conteo de Beneficiarios por Sede (v1.9.28):** Visualización del número de beneficiarios afectados por cada sede (`Centro -> Sede`) tanto en encabezados como en fila de totales en exportación a Excel y vista de impresión/PDF.
 
 ### 7. Módulo de Cocina - Ítems ✅
 - [x] **Backend:** `ItemController.php` con CRUD completo

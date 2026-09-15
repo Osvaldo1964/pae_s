@@ -1057,14 +1057,32 @@ window.MinutasView = {
         let header = '<tr><th style="background:#f0f0f0;">INSUMO</th><th style="background:#f0f0f0;">UNIDAD</th>';
         const branchIds = Object.keys(res.branches || {});
 
+        const formatInt = (num) => new Intl.NumberFormat('en-US').format(num || 0);
+
         branchIds.forEach(bid => {
-            header += `<th style="background:#f0f0f0;">${res.branches[bid]}</th>`;
+            const benCount = (res.branch_beneficiaries && res.branch_beneficiaries[bid]) ? res.branch_beneficiaries[bid] : 0;
+            header += `<th style="background:#f0f0f0; text-align:center;">${res.branches[bid]}<br><span style="color:#084298; font-weight:normal; font-size:9pt;">(${formatInt(benCount)} Beneficiarios)</span></th>`;
         });
         header += '<th style="background:#e0e0e0; font-weight:bold;">TOTAL NECESIDAD</th>';
         header += '<th style="background:#e0e0e0; font-weight:bold;">COSTO UNITARIO ($)</th>';
         header += '<th style="background:#e0e0e0; font-weight:bold;">COSTO TOTAL ($)</th></tr>';
 
-        let body = '';
+        // Fila de beneficiarios atendidos por centro->sede
+        let benRow = `<tr style="background:#e7f1ff; font-weight:bold;">
+            <td colspan="2" style="text-align:right; font-weight:bold; color:#084298; background:#e7f1ff; border:1px solid #b6d4fe;">BENEFICIARIOS ATENDIDOS:</td>`;
+        let totalBens = 0;
+        branchIds.forEach(bid => {
+            const count = (res.branch_beneficiaries && res.branch_beneficiaries[bid]) ? res.branch_beneficiaries[bid] : 0;
+            totalBens += count;
+            benRow += `<td style="text-align:center; font-weight:bold; color:#084298; background:#e7f1ff; border:1px solid #b6d4fe;">${formatInt(count)}</td>`;
+        });
+        const grandTotalBens = (res.total_beneficiaries !== undefined) ? res.total_beneficiaries : totalBens;
+        benRow += `<td style="text-align:center; font-weight:bold; color:#084298; background:#cfe2ff; border:1px solid #b6d4fe;">${formatInt(grandTotalBens)}</td>
+            <td style="background:#e7f1ff; border:1px solid #b6d4fe;"></td>
+            <td style="background:#e7f1ff; border:1px solid #b6d4fe;"></td>
+        </tr>`;
+
+        let body = benRow;
         const formatNumber = (num) => {
             if (num === 0 || num === null) return '0';
             return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
@@ -1092,6 +1110,7 @@ window.MinutasView = {
             <body>
                 <h3>EXPLOSION DE INSUMOS - ${res.cycle.name}</h3>
                 <p>Periodo: ${res.cycle.start_date} al ${res.cycle.end_date}</p>
+                <p><strong>Total Beneficiarios Atendidos en el Ciclo:</strong> ${formatInt(grandTotalBens)}</p>
                 <table border="1" cellspacing="0" cellpadding="5">${header}${body}</table>
             </body>
             </html>
@@ -1111,13 +1130,27 @@ window.MinutasView = {
     _generatePrintView(res) {
         let header = '<tr><th>INSUMO</th><th>UNIDAD</th>';
         const branchIds = Object.keys(res.branches || {});
+        const formatInt = (num) => new Intl.NumberFormat('en-US').format(num || 0);
 
         branchIds.forEach(bid => {
-            header += `<th>${res.branches[bid]}</th>`;
+            const benCount = (res.branch_beneficiaries && res.branch_beneficiaries[bid]) ? res.branch_beneficiaries[bid] : 0;
+            header += `<th>${res.branches[bid]}<br><small class="text-primary fw-normal">(${formatInt(benCount)} Beneficiarios)</small></th>`;
         });
         header += '<th class="fw-bold bg-light">TOTAL</th></tr>';
 
-        let body = '';
+        // Fila de beneficiarios atendidos
+        let benRow = `<tr class="table-primary fw-bold">
+            <td colspan="2" class="text-end">BENEFICIARIOS ATENDIDOS:</td>`;
+        let totalBens = 0;
+        branchIds.forEach(bid => {
+            const count = (res.branch_beneficiaries && res.branch_beneficiaries[bid]) ? res.branch_beneficiaries[bid] : 0;
+            totalBens += count;
+            benRow += `<td class="text-center">${formatInt(count)}</td>`;
+        });
+        const grandTotalBens = (res.total_beneficiaries !== undefined) ? res.total_beneficiaries : totalBens;
+        benRow += `<td class="text-center">${formatInt(grandTotalBens)}</td></tr>`;
+
+        let body = benRow;
         const formatNumber = (num) => {
             if (num === 0 || num === null) return '-';
             return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);

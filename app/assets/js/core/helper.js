@@ -114,7 +114,21 @@ const Helper = {
     /**
      * Centralized fetch wrapper
      */
-    fetchAPI: async (endpoint, options = {}) => {
+    fetchAPI: async (endpoint, options = {}, maybeBody = null) => {
+        // Soporte universal para sobrecarga: fetchAPI(endpoint, 'POST', data)
+        if (typeof options === 'string') {
+            const method = options.toUpperCase();
+            const opts = { method };
+            if (maybeBody !== null && maybeBody !== undefined) {
+                if (maybeBody instanceof FormData || typeof maybeBody === 'string') {
+                    opts.body = maybeBody;
+                } else {
+                    opts.body = JSON.stringify(maybeBody);
+                }
+            }
+            options = opts;
+        }
+
         const url = endpoint.startsWith('http') ? endpoint : `${Config.API_URL}${endpoint}`;
 
         const defaultHeaders = Config.getHeaders();

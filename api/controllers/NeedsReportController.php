@@ -98,7 +98,12 @@ class NeedsReportController extends BaseController
             $demand = [];
             $branches = $this->getBranches($pae_id, $cycleBranches); // PASAR pae_id y cycleBranches para filtrar sedes
 
+            $cycleRationTypeIds = [];
             foreach ($recipeDetails as $row) {
+                if (!empty($row['ration_type_id'])) {
+                    $cycleRationTypeIds[$row['ration_type_id']] = true;
+                }
+
                 $itemId = $row['item_id'];
                 $ageGroup = $this->normalizeAgeGroup($row['age_group']);
                 $qtyPerPerson = floatval($row['quantity']);
@@ -132,6 +137,23 @@ class NeedsReportController extends BaseController
                 }
             }
 
+            // Calcular conteo de beneficiarios únicos por sede que participan en el ciclo
+            $branchBeneficiaries = [];
+            $allUniqueBeneficiaries = [];
+            foreach ($beneficiaries as $b) {
+                $bRtId = $b['ration_type_id'];
+                if (empty($cycleRationTypeIds) || isset($cycleRationTypeIds[$bRtId])) {
+                    $branchBeneficiaries[$b['branch_id']][$b['id']] = true;
+                    $allUniqueBeneficiaries[$b['id']] = true;
+                }
+            }
+
+            $branchBeneficiaryTotals = [];
+            foreach ($branches as $bid => $bname) {
+                $branchBeneficiaryTotals[$bid] = isset($branchBeneficiaries[$bid]) ? count($branchBeneficiaries[$bid]) : 0;
+            }
+            $grandTotalBeneficiaries = count($allUniqueBeneficiaries);
+
             // 5. Format for Response
             $finalReport = array_values($demand);
             usort($finalReport, function ($a, $b) {
@@ -143,6 +165,8 @@ class NeedsReportController extends BaseController
                 'success' => true,
                 'cycle' => $cycle,
                 'branches' => $branches,
+                'branch_beneficiaries' => $branchBeneficiaryTotals,
+                'total_beneficiaries' => $grandTotalBeneficiaries,
                 'data' => $finalReport
             ]);
         } catch (Exception $e) {

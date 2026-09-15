@@ -762,11 +762,121 @@ Authorization: Bearer {token}
 ---
 
 ### GET /reports/needs/{cycle_id}
-Calcular la explosión de víveres y necesidades consolidadas de insumos por ciclo de menú.
+Calcular la explosión de víveres y necesidades consolidadas de insumos por ciclo de menú, incluyendo el conteo de beneficiarios únicos atendidos por cada centro -> sede.
 
 **Headers:**
 ```http
 Authorization: Bearer {token}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "cycle": {
+    "id": 1,
+    "name": "CICLO PRIMERA QUINCENA",
+    "start_date": "2026-09-14",
+    "end_date": "2026-09-18"
+  },
+  "branches": {
+    "12": "I.E.M. JUAN XXIII - PRINCIPAL",
+    "15": "I.E.M. JUAN XXIII - ESCUELA RURAL BERMEO"
+  },
+  "branch_beneficiaries": {
+    "12": 150,
+    "15": 45
+  },
+  "total_beneficiaries": 195,
+  "data": [
+    {
+      "name": "ACEITE DE GIRASOL",
+      "unit": "L",
+      "unit_cost": 8500,
+      "branches": { "12": 10.5, "15": 3.2 },
+      "grand_total": 13.7
+    }
+  ]
+}
+```
+
+---
+
+## 👥 Endpoints de Beneficiarios
+
+### GET /api/beneficiarios/datatable
+Listado paginado dinámico (Server-Side Processing) para DataTables con búsqueda y filtros.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+```
+
+**Query Parameters:**
+- `draw`: Secuencia de solicitud de DataTables
+- `start`: Desplazamiento (offset)
+- `length`: Cantidad de registros por página
+- `search[value]`: Cadena de búsqueda (documento, nombres, apellidos)
+- `school_id`: (opcional) Filtro por colegio
+- `branch_id`: (opcional) Filtro por sede
+- `status`: (opcional) `ACTIVO`, `INACTIVO`, `DESERTADO`
+
+---
+
+### POST /api/beneficiarios/bulk-ration-preview
+Previsualiza el número de beneficiarios afectados y muestra un extracto antes de aplicar un ajuste masivo de raciones.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "action_mode": "replace", // "replace" | "assign" | "unassign"
+  "source_ration_id": 2,    // Requerido en modo replace
+  "target_ration_id": 5,    // Requerido en modo replace y assign
+  "school_id": 1,           // Opcional
+  "branch_id": 4,           // Opcional
+  "grade": "PRIMARIA_A",    // Opcional
+  "group_name": "301",      // Opcional
+  "status": "ACTIVO"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "affected_count": 142,
+  "preview_list": [
+    { "id": 1024, "full_name": "GARCIA LOPEZ JUAN", "grade": "1°", "group_name": "101" }
+  ]
+}
+```
+
+---
+
+### POST /api/beneficiarios/bulk-ration-apply
+Ejecuta la modificación transaccional atómica de derechos de ración y sincronización de tipo principal.
+
+**Headers:**
+```http
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+**Request:** Mismos parámetros que `bulk-ration-preview`.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Se actualizaron 142 beneficiarios correctamente.",
+  "affected_count": 142
+}
 ```
 
 ---
@@ -799,4 +909,4 @@ Todos los errores siguen el mismo formato:
 
 ---
 
-**Última Actualización:** 11 de Septiembre de 2026, 10:30 AM
+**Última Actualización:** 15 de Septiembre de 2026 (v1.9.28)

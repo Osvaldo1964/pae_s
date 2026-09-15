@@ -2,8 +2,8 @@
 
 **Sistema de Gestión Integral para Programas de Alimentación Escolar**
 
-Versión: 1.9.15
-Última actualización: 26 de Marzo 2026
+Versión: 1.9.28
+Última actualización: 15 de Septiembre 2026
 
 ---
 
@@ -23,6 +23,7 @@ Versión: 1.9.15
 
 | Módulo | Documento | Estado |
 |--------|-----------|--------|
+| **Beneficiarios** | [MODULO_BENEFICIARIOS.md](MODULO_BENEFICIARIOS.md) | ✅ Completo |
 | **Almacén** | [MODULO_ALMACEN.md](MODULO_ALMACEN.md) | ✅ Completo |
 | **Consumos** | [MODULO_CONSUMOS.md](MODULO_CONSUMOS.md) | ✅ Completo |
 | **Cocina** | [MODULO_COCINA.md](MODULO_COCINA.md) | ✅ Completo |

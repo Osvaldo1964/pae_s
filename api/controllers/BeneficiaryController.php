@@ -730,22 +730,24 @@ class BeneficiaryController extends BaseController
             if ($source_ration_id === $target_ration_id) {
                 throw new Exception("La ración de origen y de destino no pueden ser iguales.");
             }
-            $where[] = "(b.id IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :source_ration_id) OR b.ration_type_id = :source_ration_id)";
+            $where[] = "(EXISTS (SELECT 1 FROM beneficiary_ration_rights brr WHERE brr.beneficiary_id = b.id AND brr.ration_type_id = :source_ration_id) OR b.ration_type_id = :source_ration_id2)";
             $params[":source_ration_id"] = $source_ration_id;
+            $params[":source_ration_id2"] = $source_ration_id;
         } elseif ($action === 'ASSIGN') {
             if (!$target_ration_id) {
                 throw new Exception("Debe especificar la ración que desea asignar.");
             }
             // Solo aquellos que no la tengan ya asignada
-            $where[] = "b.id NOT IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :target_ration_id)";
+            $where[] = "NOT EXISTS (SELECT 1 FROM beneficiary_ration_rights brr WHERE brr.beneficiary_id = b.id AND brr.ration_type_id = :target_ration_id)";
             $params[":target_ration_id"] = $target_ration_id;
         } elseif ($action === 'REMOVE') {
             if (!$target_ration_id) {
                 throw new Exception("Debe especificar la ración que desea desmarcar/quitar.");
             }
             // Aquellos que la tengan asignada
-            $where[] = "(b.id IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :target_ration_id) OR b.ration_type_id = :target_ration_id)";
+            $where[] = "(EXISTS (SELECT 1 FROM beneficiary_ration_rights brr WHERE brr.beneficiary_id = b.id AND brr.ration_type_id = :target_ration_id) OR b.ration_type_id = :target_ration_id2)";
             $params[":target_ration_id"] = $target_ration_id;
+            $params[":target_ration_id2"] = $target_ration_id;
         } else {
             throw new Exception("Acción no válida.");
         }
