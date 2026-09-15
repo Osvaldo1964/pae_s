@@ -87,13 +87,21 @@
 
 ## 🔧 Correcciones Recientes
 
-### Core JS Utilities
-- ✅ **Helper.js:** Implementado método universal `Helper.loading()` para sincronizar estados de espera en toda la aplicación.
+### Core JS Utilities y Frontend
+- ✅ **Helper.js:** Implementado método universal `Helper.loading()` y formateador seguro `Helper.formatDateDMY()` sin desfases de huso horario.
+- ✅ **Desacoplamiento de app.js:** Migración completa de gestión de usuarios a la arquitectura `UsersView`, eliminando más de 220 líneas de código duplicado e incrustado.
+
+### Backend y Arquitectura API
+- ✅ **BaseController Unificado:** Más de 20 controladores migrados a `BaseController`, eliminando código duplicado de lectura JWT y garantizando soporte robusto de cabeceras en servidores Linux/LiteSpeed (Hostinger).
+- ✅ **Blindaje Global API (`api/index.php`):** Captura global con `try / catch (\Throwable $e)` para evitar respuestas en blanco o volcados no controlados de errores en producción.
+- ✅ **Optimización SQL:** Eliminación de consultas N+1 en `TenantManagementController::listAll`.
+- ✅ **Hotfix DeliveryController:** Corregido error sintáctico preexistente que bloqueaba entregas grupales por QR.
 
 ### Reportes y Logística
 - ✅ **Lógica de Perecederos:** Diferenciación visual y operativa de productos según rotación.
 - ✅ **Tipos de Ración:** Resuelto SyntaxError por re-declaración y warning de persistencia en BD.
 - ✅ **Reporte de Asistencia (QR):** Primer módulo de auditoría legal que vincula lecturas QR con la base de datos central de beneficiarios.
+- ✅ **Kardex Oficial de Productos:** Control de entrega por sede a 43 ítems/hoja, distribución balanceada del 58% de ancho para días hábiles y exclusión de sedes vacías.
 
 ---
 
@@ -106,4 +114,4 @@
 
 ---
 
-**Última actualización**: 09 de Julio 2026, 11:00 AM (v1.9.16)
+**Última actualización**: 15 de Septiembre 2026, 10:00 AM (v1.9.25)

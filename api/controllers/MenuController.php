@@ -2,46 +2,11 @@
 
 namespace Controllers;
 
-use Config\Database;
 use PDO;
 use Exception;
 
-class MenuController
+class MenuController extends BaseController
 {
-    private $conn;
-
-    public function __construct()
-    {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
-    /**
-     * Obtener el ID del PAE desde el token JWT
-     */
-    private function getPaeIdFromToken()
-    {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        if (preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            $token = $matches[1];
-            try {
-                $decoded = \Utils\JWT::decode($token);
-                // Si el objeto decodificado tiene una propiedad 'data'
-                if (is_object($decoded) && isset($decoded->data->pae_id)) {
-                    return $decoded->data->pae_id;
-                }
-                // Si el objeto decodificado es un array (JWT::decode devuelve array en la versión actual)
-                if (is_array($decoded) && isset($decoded['data']['pae_id'])) {
-                    return $decoded['data']['pae_id'];
-                }
-                return null;
-            } catch (Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
     /**
      * GET /api/menu-cycles - Listar ciclos de menús
      */

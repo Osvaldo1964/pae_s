@@ -7,52 +7,14 @@ use Config\Config;
 use PDO;
 use Exception;
 
-class DeliveryController
+class DeliveryController extends BaseController
 {
-
-    private $conn;
     private $table_name = "daily_deliveries";
 
-    public function __construct()
+    // Helper para verificar PAE y Usuario desde el Token
+    protected function getAuthData()
     {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
-    // Helper para verificar PAE y Usuario desde el Token (Ya implementado en otros controladores)
-    private function getAuthData()
-    {
-        $headers = null;
-        if (isset($_SERVER['Authorization'])) {
-            $headers = trim($_SERVER["Authorization"]);
-        } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
-        } else if (isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
-            $headers = trim($_SERVER["HTTP_X_AUTH_TOKEN"]);
-        } elseif (function_exists('apache_request_headers')) {
-            $requestHeaders = apache_request_headers();
-            $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-            if (isset($requestHeaders['Authorization'])) {
-                $headers = trim($requestHeaders['Authorization']);
-            } elseif (isset($requestHeaders['X-Auth-Token'])) {
-                $headers = trim($requestHeaders['X-Auth-Token']);
-            }
-        }
-
-        if (!$headers) {
-            return null;
-        }
-
-        $jwt = $headers;
-        if (preg_match('/Bearer\s+(.*)$/i', $headers, $matches)) {
-            $jwt = $matches[1];
-        }
-
-        try {
-            $payload = \Utils\JWT::decode($jwt);
-            return $payload['data'] ?? null;
-        } catch (Exception $e) {
-            return null;
-        }
+        return $this->getTokenData();
     }
 
     /**
@@ -180,6 +142,8 @@ class DeliveryController
         ]);
 
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     /**
      * Registrar entrega masiva por Grupo / Curso (QR Grupal)
      * POST /api/deliveries/group

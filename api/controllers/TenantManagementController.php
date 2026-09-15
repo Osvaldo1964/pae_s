@@ -38,21 +38,32 @@ class TenantManagementController
             $stmt->execute();
             $programs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // Validate logo existence and get services
+            $programIds = array_column($programs, 'id');
+            $servicesByPae = [];
+            if (!empty($programIds)) {
+                $placeholders = implode(',', array_fill(0, count($programIds), '?'));
+                $stmtServices = $this->db->prepare("
+                    SELECT ps.pae_id, s.id, s.name 
+                    FROM program_services s
+                    JOIN pae_program_services ps ON s.id = ps.service_id
+                    WHERE ps.pae_id IN ($placeholders)
+                ");
+                $stmtServices->execute($programIds);
+                while ($row = $stmtServices->fetch(\PDO::FETCH_ASSOC)) {
+                    $servicesByPae[$row['pae_id']][] = [
+                        'id' => $row['id'],
+                        'name' => $row['name']
+                    ];
+                }
+            }
+
+            // Validate logo existence and assign services
             foreach ($programs as &$pae) {
                 $pae['entity_logo_path'] = $this->validateLogoPath($pae['entity_logo_path']);
                 $pae['operator_logo_path'] = $this->validateLogoPath($pae['operator_logo_path']);
-
-                // Get services
-                $stmtServices = $this->db->prepare("
-                    SELECT s.id, s.name 
-                    FROM program_services s
-                    JOIN pae_program_services ps ON s.id = ps.service_id
-                    WHERE ps.pae_id = ?
-                ");
-                $stmtServices->execute([$pae['id']]);
-                $pae['services'] = $stmtServices->fetchAll(\PDO::FETCH_ASSOC);
+                $pae['services'] = $servicesByPae[$pae['id']] ?? [];
             }
+            unset($pae);
 
             echo json_encode($programs);
         } catch (\PDOException $e) {

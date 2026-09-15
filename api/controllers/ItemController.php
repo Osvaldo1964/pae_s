@@ -2,40 +2,12 @@
 
 namespace Controllers;
 
-use Config\Database;
-use Utils\JWT;
 use PDO;
 use PDOException;
 use Exception;
 
-class ItemController
+class ItemController extends BaseController
 {
-    private $conn;
-
-    public function __construct()
-    {
-        $database = Database::getInstance();
-        $this->conn = $database->getConnection();
-    }
-
-    /**
-     * Extrae el pae_id del token JWT
-     */
-    private function getPaeIdFromToken()
-    {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        if (preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            try {
-                $decoded = JWT::decode($matches[1]);
-                if (is_object($decoded)) return $decoded->data->pae_id ?? null;
-                if (is_array($decoded)) return $decoded['data']['pae_id'] ?? null;
-            } catch (Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
 
     /**
      * GET /api/items - Listar todos los ítems del PAE

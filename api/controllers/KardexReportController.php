@@ -2,38 +2,11 @@
 
 namespace Controllers;
 
-use Config\Database;
 use PDO;
 use Exception;
 
-class KardexReportController
+class KardexReportController extends BaseController
 {
-    private $conn;
-
-    public function __construct()
-    {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
-    private function getPaeIdFromToken()
-    {
-        $headers = function_exists('getallheaders') ? getallheaders() : [];
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-        if (preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            try {
-                $decoded = \Utils\JWT::decode($matches[1]);
-                if (is_object($decoded) && isset($decoded->data->pae_id)) {
-                    return $decoded->data->pae_id;
-                }
-                if (is_array($decoded) && isset($decoded['data']['pae_id'])) {
-                    return $decoded['data']['pae_id'];
-                }
-            } catch (Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
 
     /**
      * GET /api/reports/kardex-productos

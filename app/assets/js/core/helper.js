@@ -69,6 +69,19 @@ const Helper = {
     },
 
     /**
+     * Format YYYY-MM-DD to DD/MM/YYYY without timezone offset distortion
+     */
+    formatDateDMY: (dateStr) => {
+        if (!dateStr) return '-';
+        const clean = String(dateStr).split(' ')[0].split('T')[0];
+        const parts = clean.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+    },
+
+    /**
      * Basic Input Sanitation (Prevent XSS)
      */
     sanitize: (str) => {

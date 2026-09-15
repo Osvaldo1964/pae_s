@@ -8,32 +8,8 @@ use Utils\JWT;
 use PDO;
 use Exception;
 
-class DashboardController
+class DashboardController extends BaseController
 {
-    private $conn;
-
-    public function __construct()
-    {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
-    private function getPaeIdFromToken()
-    {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        if (preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            try {
-                $decoded = \Utils\JWT::decode($matches[1]);
-                if (is_object($decoded))
-                    return $decoded->data->pae_id ?? null;
-                if (is_array($decoded))
-                    return $decoded['data']['pae_id'] ?? null;
-            } catch (Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
 
     public function getIndex()
     {

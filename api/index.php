@@ -19,9 +19,7 @@ spl_autoload_register(function ($class_name) {
     $prefix_map = [
         'Config\\' => 'config/',
         'Controllers\\' => 'controllers/',
-        'Models\\' => 'models/',
-        'Utils\\' => 'utils/',
-        'Middleware\\' => 'middleware/'
+        'Utils\\' => 'utils/'
     ];
 
     foreach ($prefix_map as $prefix => $dir) {
@@ -59,7 +57,8 @@ $resource = trim($resource);
 // CLEAN IDIOTS FROM URL (Null bytes, vertical tabs, etc)
 $resource = preg_replace('/[\x00-\x1F\x7F]/u', '', $resource);
 
-if ($resource === 'auth') {
+try {
+    if ($resource === 'auth') {
     $controller = new \Controllers\AuthController();
     if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $controller->login();
@@ -864,4 +863,12 @@ if ($resource === 'auth') {
 } else {
     http_response_code(404);
     echo json_encode(["message" => "Resource Not Found", "resource" => $resource]);
+}
+} catch (\Throwable $e) {
+    error_log("API Unhandled Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "Error interno del servidor: " . $e->getMessage()
+    ]);
 }

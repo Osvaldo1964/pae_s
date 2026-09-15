@@ -2,37 +2,11 @@
 
 namespace Controllers;
 
-use Config\Database;
 use PDO;
 use Exception;
 
-class RecipeController
+class RecipeController extends BaseController
 {
-    private $conn;
-
-    public function __construct()
-    {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
-    private function getPaeIdFromToken()
-    {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        if (preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            try {
-                $decoded = \Utils\JWT::decode($matches[1]);
-                if (is_object($decoded))
-                    return $decoded->data->pae_id ?? null;
-                if (is_array($decoded))
-                    return $decoded['data']['pae_id'] ?? null;
-            } catch (Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
     /**
      * GET /api/recipes - Listar recetas
      */
