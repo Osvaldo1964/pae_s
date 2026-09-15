@@ -54,6 +54,9 @@ var BeneficiariesView = {
                          </h2>
                     </div>
                     <div class="col-md-6 text-end d-flex justify-content-end gap-2">
+                         <button class="btn btn-outline-primary rounded-pill px-3" onclick="BeneficiariesView.openMassiveRationModal()" title="Asignación o reemplazo masivo de raciones por Centro/Sede">
+                            <i class="fas fa-tasks me-2"></i>Ajuste Masivo Raciones
+                         </button>
                          <button class="btn btn-outline-success rounded-pill px-3" onclick="PrintListView.openModal()" title="Generar planilla semanal de asistencia">
                             <i class="fas fa-calendar-week me-2"></i>Planilla Semanal
                          </button>
@@ -495,6 +498,149 @@ var BeneficiariesView = {
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="button" class="btn btn-primary px-4" onclick="BeneficiariesView.save()">
                                 <i class="fas fa-save me-2"></i>Guardar Beneficiario
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Asignación y Reemplazo Masivo de Raciones -->
+            <div class="modal fade" id="modalMassiveRations" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-utensils me-2"></i>Ajuste Masivo de Tipos de Ración
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="alert alert-info d-flex align-items-center mb-4">
+                                <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
+                                <div class="small">
+                                    Esta herramienta permite <strong>reemplazar, asignar o desmarcar tipos de ración</strong> a nivel global para todos los beneficiarios de una institución o sede educativa en un solo clic, sin tener que editar alumno por alumno.
+                                </div>
+                            </div>
+
+                            <!-- 1. Alcance / Filtros -->
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                                <i class="fas fa-filter me-2"></i>1. Alcance de Beneficiarios
+                            </h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Institución / Centro Educativo *</label>
+                                    <select class="form-select" id="massive-school-id" onchange="BeneficiariesView.onMassiveSchoolChange()">
+                                        <option value="">Seleccione una institución...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Sede Educativa</label>
+                                    <select class="form-select" id="massive-branch-id" onchange="BeneficiariesView.onMassiveFilterChange()">
+                                        <option value="">-- Todas las sedes del centro --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Grado (Opcional)</label>
+                                    <select class="form-select" id="massive-grade" onchange="BeneficiariesView.onMassiveFilterChange()">
+                                        <option value="">-- Todos los grados --</option>
+                                        <option value="PARVULOS">Párvulos</option>
+                                        <option value="PREJARDIN">Pre-Jardín</option>
+                                        <option value="JARDIN">Jardín</option>
+                                        <option value="TRANSICION">Transición</option>
+                                        <option value="1">Primero</option>
+                                        <option value="2">Segundo</option>
+                                        <option value="3">Tercero</option>
+                                        <option value="4">Cuarto</option>
+                                        <option value="5">Quinto</option>
+                                        <option value="6">Sexto</option>
+                                        <option value="7">Séptimo</option>
+                                        <option value="8">Octavo</option>
+                                        <option value="9">Noveno</option>
+                                        <option value="10">Décimo</option>
+                                        <option value="11">Undécimo</option>
+                                        <option value="ADULTO_MAYOR">Adulto Mayor</option>
+                                        <option value="MADRE_GESTANTE">Madre Gestante</option>
+                                        <option value="PRIMERA_INFANCIA">Primera Infancia</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Grupo / Curso (Opcional)</label>
+                                    <input type="text" class="form-control" id="massive-group" placeholder="Ej: 01, A (Opcional)" oninput="BeneficiariesView.onMassiveFilterChange()">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Estado</label>
+                                    <select class="form-select" id="massive-status" onchange="BeneficiariesView.onMassiveFilterChange()">
+                                        <option value="ACTIVO" selected>Solo Activos</option>
+                                        <option value="TODOS">Todos los estados</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 2. Acción a Realizar -->
+                            <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                                <i class="fas fa-sliders-h me-2"></i>2. Operación de Raciones
+                            </h6>
+                            <div class="mb-3">
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="massiveAction" id="action-replace" value="REPLACE" checked onchange="BeneficiariesView.onMassiveActionChange()">
+                                    <label class="btn btn-outline-primary" for="action-replace">
+                                        <i class="fas fa-sync-alt me-1"></i> Reemplazar Ración
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="massiveAction" id="action-assign" value="ASSIGN" onchange="BeneficiariesView.onMassiveActionChange()">
+                                    <label class="btn btn-outline-success" for="action-assign">
+                                        <i class="fas fa-plus-circle me-1"></i> Asignar / Marcar
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="massiveAction" id="action-remove" value="REMOVE" onchange="BeneficiariesView.onMassiveActionChange()">
+                                    <label class="btn btn-outline-danger" for="action-remove">
+                                        <i class="fas fa-minus-circle me-1"></i> Desmarcar / Quitar
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 p-3 bg-light rounded border mb-4">
+                                <div class="col-md-6" id="container-source-ration">
+                                    <label class="form-label fw-bold text-danger">
+                                        <i class="fas fa-arrow-circle-right me-1"></i>Ración Actual a Cambiar (Origen) *
+                                    </label>
+                                    <select class="form-select" id="massive-source-ration" onchange="BeneficiariesView.onMassiveFilterChange()">
+                                        <option value="">Seleccione ración origen...</option>
+                                    </select>
+                                    <div class="form-text small">Solo se cambiará a quienes tengan asignada esta ración.</div>
+                                </div>
+                                <div class="col-md-6" id="container-target-ration">
+                                    <label class="form-label fw-bold text-success" id="label-target-ration">
+                                        <i class="fas fa-check-circle me-1"></i>Nueva Ración a Asignar (Destino) *
+                                    </label>
+                                    <select class="form-select" id="massive-target-ration" onchange="BeneficiariesView.onMassiveFilterChange()">
+                                        <option value="">Seleccione ración destino...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 3. Vista Previa / Cálculo -->
+                            <div class="card bg-white border mb-3">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="text-muted small d-block">Estimación preliminar:</span>
+                                            <strong id="massive-preview-text" class="text-dark">Seleccione institución y raciones para consultar</strong>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="BeneficiariesView.previewMassiveRations()">
+                                            <i class="fas fa-calculator me-1"></i>Calcular Afectados
+                                        </button>
+                                    </div>
+                                    <div id="massive-sample-box" class="mt-2 pt-2 border-top small text-muted" style="display: none;">
+                                        <strong>Muestra de estudiantes:</strong> <span id="massive-sample-list"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="BeneficiariesView.applyMassiveRations()">
+                                <i class="fas fa-check me-2"></i>Aplicar Ajuste Masivo
                             </button>
                         </div>
                     </div>
@@ -1729,6 +1875,305 @@ var BeneficiariesView = {
             iconEl.style.display = 'block';
             imgEl.style.display = 'none';
             imgEl.src = '';
+        }
+    },
+
+    /**
+     * =========================================================================
+     * GESTIÓN Y AJUSTE MASIVO DE TIPOS DE RACIÓN POR CENTRO / SEDE
+     * =========================================================================
+     */
+    async openMassiveRationModal() {
+        // Asegurar que schools y rationTypes estén cargados
+        if (!this.schools || this.schools.length === 0) {
+            try {
+                this.schools = await Helper.fetchAPI('/schools');
+            } catch (e) {
+                console.error("Error cargando instituciones", e);
+            }
+        }
+        if (!this.rationTypes || this.rationTypes.length === 0) {
+            try {
+                const res = await Helper.fetchAPI('/ration-types');
+                this.rationTypes = res.data || res || [];
+            } catch (e) {
+                console.error("Error cargando tipos de ración", e);
+            }
+        }
+
+        // Llenar select de instituciones
+        const schoolSelect = document.getElementById('massive-school-id');
+        schoolSelect.innerHTML = '<option value="">Seleccione una institución...</option>';
+        if (Array.isArray(this.schools)) {
+            this.schools.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `${s.name} ${s.dane_code ? '(' + s.dane_code + ')' : ''}`;
+                schoolSelect.appendChild(opt);
+            });
+        }
+
+        // Si en la vista principal hay una escuela seleccionada, sincronizarla
+        if (this.selectedSchoolId) {
+            schoolSelect.value = this.selectedSchoolId;
+        }
+
+        // Llenar select de raciones
+        const sourceSelect = document.getElementById('massive-source-ration');
+        const targetSelect = document.getElementById('massive-target-ration');
+        sourceSelect.innerHTML = '<option value="">Seleccione ración origen...</option>';
+        targetSelect.innerHTML = '<option value="">Seleccione ración destino...</option>';
+
+        if (Array.isArray(this.rationTypes)) {
+            this.rationTypes.forEach(r => {
+                const opt1 = document.createElement('option');
+                opt1.value = r.id;
+                opt1.textContent = `${r.name} ${r.service_time ? '(' + r.service_time + ')' : ''}`;
+                sourceSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = r.id;
+                opt2.textContent = `${r.name} ${r.service_time ? '(' + r.service_time + ')' : ''}`;
+                targetSelect.appendChild(opt2);
+            });
+        }
+
+        // Resetear campos
+        document.getElementById('action-replace').checked = true;
+        this.onMassiveActionChange();
+        await this.onMassiveSchoolChange();
+
+        document.getElementById('massive-preview-text').textContent = 'Seleccione los parámetros y consulte';
+        document.getElementById('massive-sample-box').style.display = 'none';
+
+        const modal = new bootstrap.Modal(document.getElementById('modalMassiveRations'));
+        modal.show();
+    },
+
+    async onMassiveSchoolChange() {
+        const schoolId = document.getElementById('massive-school-id').value;
+        const branchSelect = document.getElementById('massive-branch-id');
+        branchSelect.innerHTML = '<option value="">-- Todas las sedes del centro --</option>';
+
+        if (!schoolId) {
+            this.onMassiveFilterChange();
+            return;
+        }
+
+        try {
+            const branches = await Helper.fetchAPI(`/schools/${schoolId}/branches`);
+            if (Array.isArray(branches)) {
+                branches.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = `${b.name} ${b.dane_code ? '(' + b.dane_code + ')' : ''}`;
+                    branchSelect.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error("Error cargando sedes para ajuste masivo", e);
+        }
+
+        this.onMassiveFilterChange();
+    },
+
+    onMassiveActionChange() {
+        const action = document.querySelector('input[name="massiveAction"]:checked')?.value || 'REPLACE';
+        const containerSource = document.getElementById('container-source-ration');
+        const containerTarget = document.getElementById('container-target-ration');
+        const labelTarget = document.getElementById('label-target-ration');
+
+        if (action === 'REPLACE') {
+            containerSource.style.display = 'block';
+            containerTarget.className = 'col-md-6';
+            labelTarget.innerHTML = '<i class="fas fa-check-circle me-1"></i>Nueva Ración a Asignar (Destino) *';
+        } else if (action === 'ASSIGN') {
+            containerSource.style.display = 'none';
+            containerTarget.className = 'col-md-12';
+            labelTarget.innerHTML = '<i class="fas fa-plus-circle me-1"></i>Ración que se Asignará a los Beneficiarios *';
+        } else if (action === 'REMOVE') {
+            containerSource.style.display = 'none';
+            containerTarget.className = 'col-md-12';
+            labelTarget.innerHTML = '<i class="fas fa-minus-circle me-1"></i>Ración que se Quitará / Desmarcará *';
+        }
+
+        this.onMassiveFilterChange();
+    },
+
+    onMassiveFilterChange() {
+        const textEl = document.getElementById('massive-preview-text');
+        if (textEl) {
+            textEl.innerHTML = '<span class="text-muted"><i class="fas fa-info-circle me-1"></i>Parámetros modificados. Haga clic en "Calcular Afectados".</span>';
+        }
+        const sampleBox = document.getElementById('massive-sample-box');
+        if (sampleBox) sampleBox.style.display = 'none';
+    },
+
+    getMassivePayload() {
+        const schoolId = document.getElementById('massive-school-id').value;
+        const branchId = document.getElementById('massive-branch-id').value;
+        const grade = document.getElementById('massive-grade').value;
+        const groupName = document.getElementById('massive-group').value.trim();
+        const status = document.getElementById('massive-status').value;
+        const action = document.querySelector('input[name="massiveAction"]:checked')?.value || 'REPLACE';
+        const sourceRationId = document.getElementById('massive-source-ration').value;
+        const targetRationId = document.getElementById('massive-target-ration').value;
+
+        return {
+            school_id: schoolId,
+            branch_id: branchId || null,
+            grade: grade || null,
+            group_name: groupName || null,
+            status: status || 'ACTIVO',
+            action: action,
+            source_ration_id: sourceRationId ? parseInt(sourceRationId) : null,
+            target_ration_id: targetRationId ? parseInt(targetRationId) : null
+        };
+    },
+
+    async previewMassiveRations(silent = false) {
+        const payload = this.getMassivePayload();
+        if (!payload.school_id) {
+            if (!silent) Swal.fire('Atención', 'Debe seleccionar una institución educativa.', 'warning');
+            return null;
+        }
+
+        if (payload.action === 'REPLACE') {
+            if (!payload.source_ration_id || !payload.target_ration_id) {
+                if (!silent) Swal.fire('Atención', 'Para reemplazar debe seleccionar tanto la ración de origen como la de destino.', 'warning');
+                return null;
+            }
+            if (payload.source_ration_id === payload.target_ration_id) {
+                if (!silent) Swal.fire('Atención', 'La ración de origen y destino no pueden ser iguales.', 'warning');
+                return null;
+            }
+        } else {
+            if (!payload.target_ration_id) {
+                if (!silent) Swal.fire('Atención', 'Debe seleccionar el tipo de ración a procesar.', 'warning');
+                return null;
+            }
+        }
+
+        try {
+            const previewText = document.getElementById('massive-preview-text');
+            if (previewText) previewText.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Calculando...';
+
+            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-preview', 'POST', payload);
+
+            if (res.success) {
+                const total = res.total || 0;
+                let descAction = '';
+                if (payload.action === 'REPLACE') {
+                    descAction = `cambiarán de <strong>${res.source_ration_name}</strong> a <strong>${res.target_ration_name}</strong>`;
+                } else if (payload.action === 'ASSIGN') {
+                    descAction = `recibirán la asignación de <strong>${res.target_ration_name}</strong>`;
+                } else {
+                    descAction = `se les desmarcará la ración <strong>${res.target_ration_name}</strong>`;
+                }
+
+                if (previewText) {
+                    if (total > 0) {
+                        previewText.innerHTML = `<span class="badge bg-success fs-6 me-2">${total}</span> beneficiarios ${descAction}.`;
+                    } else {
+                        previewText.innerHTML = `<span class="badge bg-secondary fs-6 me-2">0</span> Ningún beneficiario coincide con el criterio actual.`;
+                    }
+                }
+
+                const sampleBox = document.getElementById('massive-sample-box');
+                const sampleList = document.getElementById('massive-sample-list');
+                if (sampleBox && sampleList) {
+                    if (res.sample && res.sample.length > 0) {
+                        sampleList.innerHTML = res.sample.map(s => `${s.first_name} ${s.last_name1} (${s.document_number} - ${s.grade || 'S/G'})`).join(' • ');
+                        sampleBox.style.display = 'block';
+                    } else {
+                        sampleBox.style.display = 'none';
+                    }
+                }
+                return res;
+            } else {
+                if (previewText) previewText.textContent = res.message || 'Error al calcular';
+                if (!silent) Swal.fire('Error', res.message || 'No se pudo calcular.', 'error');
+                return null;
+            }
+        } catch (e) {
+            console.error("Error en previewMassiveRations", e);
+            if (!silent) Swal.fire('Error', 'Ocurrió un error al calcular los beneficiarios.', 'error');
+            return null;
+        }
+    },
+
+    async applyMassiveRations() {
+        const preview = await this.previewMassiveRations(false);
+        if (!preview) return;
+
+        if (preview.total === 0) {
+            Swal.fire('Sin registros', 'No hay beneficiarios que cumplan con el criterio seleccionado para modificar.', 'info');
+            return;
+        }
+
+        const payload = this.getMassivePayload();
+        let actionTitle = '';
+        let actionHtml = '';
+
+        if (payload.action === 'REPLACE') {
+            actionTitle = '¿Confirmar Reemplazo Masivo?';
+            actionHtml = `Se reemplazarán los derechos de ración a <strong>${preview.total} beneficiarios</strong>:<br><br>` +
+                         `<span class="badge bg-danger p-2 fs-6 mb-2">De: ${preview.source_ration_name}</span><br>` +
+                         `<i class="fas fa-arrow-down my-1 text-muted"></i><br>` +
+                         `<span class="badge bg-success p-2 fs-6">A: ${preview.target_ration_name}</span>`;
+        } else if (payload.action === 'ASSIGN') {
+            actionTitle = '¿Confirmar Asignación Masiva?';
+            actionHtml = `Se asignará la ración <strong class="text-success">${preview.target_ration_name}</strong> a <strong>${preview.total} beneficiarios</strong> seleccionados.`;
+        } else {
+            actionTitle = '¿Confirmar Eliminación Masiva?';
+            actionHtml = `Se desmarcará la ración <strong class="text-danger">${preview.target_ration_name}</strong> de <strong>${preview.total} beneficiarios</strong> seleccionados.`;
+        }
+
+        const confirm = await Swal.fire({
+            title: actionTitle,
+            html: actionHtml,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, aplicar cambios',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        Helper.loading(true, 'Aplicando ajustes masivos de ración...');
+
+        try {
+            const res = await Helper.fetchAPI('/beneficiarios/bulk-ration-apply', 'POST', payload);
+            Helper.loading(false);
+
+            if (res.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡Operación Exitosa!',
+                    text: res.message || `Se actualizaron ${res.affected_count} beneficiarios correctamente.`,
+                    confirmButtonColor: '#3085d6'
+                });
+
+                // Cerrar modal
+                const modalEl = document.getElementById('modalMassiveRations');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                // Recargar tabla de beneficiarios
+                if (this.dataTable) {
+                    this.dataTable.ajax.reload(null, false);
+                } else {
+                    this.loadBeneficiaries();
+                }
+            } else {
+                Swal.fire('Error', res.message || 'No se pudo completar el ajuste.', 'error');
+            }
+        } catch (e) {
+            Helper.loading(false);
+            console.error("Error al aplicar raciones masivas", e);
+            Swal.fire('Error', 'Ocurrió un error inesperado al procesar la solicitud.', 'error');
         }
     }
 };

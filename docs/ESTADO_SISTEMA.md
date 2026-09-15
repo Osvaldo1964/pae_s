@@ -38,6 +38,7 @@
 - ✅ **Optimización de Rendimiento Extremo:** Implementación de *Server-Side Processing* para DataTables, garantizando carga instantánea de +25,000 registros sin bloqueos del navegador.
 - ✅ **Carnetización Digital:** Generación de carnet con QR (`PAE:ID:DOC`).
   - *Refinamiento:* Layout optimizado para evitar cortes en impresión y consultas API directas.
+- ✅ **Ajuste Masivo de Raciones:** Asignación, desmarcación y reemplazo global por Institución y Sede con estimación en tiempo real y transaccionalidad atómica.
 - ✅ **Corrección (Hotfix):** Filtro por grado optimizado para servidores Linux y ajuste de anchos de columna dinámicos.
 
 ### 5. **Operación / Reportes** ✅ ⭐ FASE COMPLETADA
@@ -114,4 +115,4 @@
 
 ---
 
-**Última actualización**: 15 de Septiembre 2026, 10:00 AM (v1.9.25)
+**Última actualización**: 15 de Septiembre 2026, 11:00 AM (v1.9.26)

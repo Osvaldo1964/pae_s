@@ -362,6 +362,10 @@ try {
             $controller->uploadDocuments($id_param);
         } elseif ($action === 'datatable') {
             $controller->datatable();
+        } elseif ($action === 'bulk-ration-preview') {
+            $controller->previewBulkRationAction();
+        } elseif ($action === 'bulk-ration-apply') {
+            $controller->executeBulkRationAction();
         } else {
             $controller->create();
         }

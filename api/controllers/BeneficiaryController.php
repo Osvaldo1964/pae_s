@@ -683,4 +683,260 @@ class BeneficiaryController extends BaseController
             $this->sendResponse(["message" => "No se recibieron archivos válidos para subir.", "uploaded" => []]);
         }
     }
+
+    /**
+     * Construye la consulta y parámetros para seleccionar beneficiarios según filtros y acción de ración
+     */
+    private function buildBulkRationQuery($pae_id, $data)
+    {
+        $school_id = !empty($data['school_id']) ? intval($data['school_id']) : null;
+        $branch_id = !empty($data['branch_id']) ? intval($data['branch_id']) : null;
+        $grade = isset($data['grade']) && $data['grade'] !== '' ? trim($data['grade']) : null;
+        $group_name = isset($data['group_name']) && $data['group_name'] !== '' ? trim($data['group_name']) : null;
+        $status = isset($data['status']) && $data['status'] !== '' ? trim($data['status']) : 'ACTIVO';
+        $action = isset($data['action']) ? strtoupper(trim($data['action'])) : 'REPLACE';
+        $source_ration_id = !empty($data['source_ration_id']) ? intval($data['source_ration_id']) : null;
+        $target_ration_id = !empty($data['target_ration_id']) ? intval($data['target_ration_id']) : null;
+
+        $where = ["b.pae_id = :pae_id"];
+        $params = [":pae_id" => $pae_id];
+
+        if ($school_id) {
+            $where[] = "br.school_id = :school_id";
+            $params[":school_id"] = $school_id;
+        }
+        if ($branch_id) {
+            $where[] = "b.branch_id = :branch_id";
+            $params[":branch_id"] = $branch_id;
+        }
+        if ($grade) {
+            $where[] = "b.grade = :grade";
+            $params[":grade"] = $grade;
+        }
+        if ($group_name) {
+            $where[] = "b.group_name = :group_name";
+            $params[":group_name"] = $group_name;
+        }
+        if ($status && $status !== 'TODOS') {
+            $where[] = "b.status = :status";
+            $params[":status"] = $status;
+        }
+
+        // Filtro según la acción
+        if ($action === 'REPLACE') {
+            if (!$source_ration_id || !$target_ration_id) {
+                throw new Exception("Debe especificar la ración de origen y la ración de destino.");
+            }
+            if ($source_ration_id === $target_ration_id) {
+                throw new Exception("La ración de origen y de destino no pueden ser iguales.");
+            }
+            $where[] = "(b.id IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :source_ration_id) OR b.ration_type_id = :source_ration_id)";
+            $params[":source_ration_id"] = $source_ration_id;
+        } elseif ($action === 'ASSIGN') {
+            if (!$target_ration_id) {
+                throw new Exception("Debe especificar la ración que desea asignar.");
+            }
+            // Solo aquellos que no la tengan ya asignada
+            $where[] = "b.id NOT IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :target_ration_id)";
+            $params[":target_ration_id"] = $target_ration_id;
+        } elseif ($action === 'REMOVE') {
+            if (!$target_ration_id) {
+                throw new Exception("Debe especificar la ración que desea desmarcar/quitar.");
+            }
+            // Aquellos que la tengan asignada
+            $where[] = "(b.id IN (SELECT brr.beneficiary_id FROM beneficiary_ration_rights brr WHERE brr.ration_type_id = :target_ration_id) OR b.ration_type_id = :target_ration_id)";
+            $params[":target_ration_id"] = $target_ration_id;
+        } else {
+            throw new Exception("Acción no válida.");
+        }
+
+        $sqlWhere = implode(" AND ", $where);
+        return [
+            'where' => $sqlWhere,
+            'params' => $params,
+            'action' => $action,
+            'source_ration_id' => $source_ration_id,
+            'target_ration_id' => $target_ration_id
+        ];
+    }
+
+    /**
+     * POST /api/beneficiarios/bulk-ration-preview
+     * Devuelve el total de beneficiarios afectados y muestra
+     */
+    public function previewBulkRationAction()
+    {
+        $pae_id = $this->getPaeIdFromToken();
+        if (!$pae_id) {
+            $this->sendError("No autorizado o sesión expirada", 401);
+            return;
+        }
+
+        $data = $this->getJsonInput();
+        if (empty($data['school_id'])) {
+            $this->sendError("Debe seleccionar al menos una Institución / Centro Educativo.", 400);
+            return;
+        }
+
+        try {
+            $queryData = $this->buildBulkRationQuery($pae_id, $data);
+
+            // Conteo total
+            $countSql = "SELECT COUNT(DISTINCT b.id) as total 
+                         FROM {$this->table_name} b 
+                         JOIN school_branches br ON b.branch_id = br.id 
+                         WHERE {$queryData['where']}";
+            $stmtCount = $this->conn->prepare($countSql);
+            $stmtCount->execute($queryData['params']);
+            $total = (int) $stmtCount->fetchColumn();
+
+            // Muestra de los primeros 5
+            $sampleSql = "SELECT b.id, b.document_number, b.first_name, b.last_name1, b.grade, b.group_name, br.name as branch_name 
+                          FROM {$this->table_name} b 
+                          JOIN school_branches br ON b.branch_id = br.id 
+                          WHERE {$queryData['where']} 
+                          ORDER BY b.last_name1 ASC, b.first_name ASC 
+                          LIMIT 5";
+            $stmtSample = $this->conn->prepare($sampleSql);
+            $stmtSample->execute($queryData['params']);
+            $sample = $stmtSample->fetchAll(PDO::FETCH_ASSOC);
+
+            // Nombres de las raciones
+            $rationNames = [];
+            $rationIds = array_filter([$queryData['source_ration_id'], $queryData['target_ration_id']]);
+            if (!empty($rationIds)) {
+                $placeholders = implode(',', array_fill(0, count($rationIds), '?'));
+                $stmtR = $this->conn->prepare("SELECT id, name FROM pae_ration_types WHERE id IN ($placeholders)");
+                $stmtR->execute(array_values($rationIds));
+                while ($r = $stmtR->fetch(PDO::FETCH_ASSOC)) {
+                    $rationNames[$r['id']] = $r['name'];
+                }
+            }
+
+            $this->sendResponse([
+                "success" => true,
+                "total" => $total,
+                "sample" => $sample,
+                "action" => $queryData['action'],
+                "source_ration_name" => $rationNames[$queryData['source_ration_id']] ?? null,
+                "target_ration_name" => $rationNames[$queryData['target_ration_id']] ?? null
+            ]);
+        } catch (Exception $e) {
+            $this->sendError($e->getMessage(), 400);
+        }
+    }
+
+    /**
+     * POST /api/beneficiarios/bulk-ration-apply
+     * Aplica atómicamente el reemplazo, asignación o eliminación masiva de ración
+     */
+    public function executeBulkRationAction()
+    {
+        $pae_id = $this->getPaeIdFromToken();
+        if (!$pae_id) {
+            $this->sendError("No autorizado o sesión expirada", 401);
+            return;
+        }
+
+        $data = $this->getJsonInput();
+        if (empty($data['school_id'])) {
+            $this->sendError("Debe seleccionar al menos una Institución / Centro Educativo.", 400);
+            return;
+        }
+
+        try {
+            $queryData = $this->buildBulkRationQuery($pae_id, $data);
+            $action = $queryData['action'];
+            $targetId = $queryData['target_ration_id'];
+            $sourceId = $queryData['source_ration_id'];
+
+            // Obtener el nombre de la ración objetivo (si aplica)
+            $targetName = null;
+            if ($targetId) {
+                $stmtT = $this->conn->prepare("SELECT name FROM pae_ration_types WHERE id = ?");
+                $stmtT->execute([$targetId]);
+                $targetName = $stmtT->fetchColumn() ?: null;
+            }
+
+            // Iniciar transacción
+            $this->conn->beginTransaction();
+
+            // Obtener todos los IDs de beneficiarios afectados
+            $selectSql = "SELECT DISTINCT b.id, b.ration_type_id 
+                          FROM {$this->table_name} b 
+                          JOIN school_branches br ON b.branch_id = br.id 
+                          WHERE {$queryData['where']}";
+            $stmtSelect = $this->conn->prepare($selectSql);
+            $stmtSelect->execute($queryData['params']);
+            $affectedBeneficiaries = $stmtSelect->fetchAll(PDO::FETCH_ASSOC);
+
+            $count = count($affectedBeneficiaries);
+            if ($count === 0) {
+                $this->conn->rollBack();
+                $this->sendResponse([
+                    "success" => true,
+                    "affected_count" => 0,
+                    "message" => "No se encontraron beneficiarios que cumplan los criterios seleccionados."
+                ]);
+                return;
+            }
+
+            $beneficiaryIds = array_column($affectedBeneficiaries, 'id');
+
+            if ($action === 'REPLACE') {
+                $delRights = $this->conn->prepare("DELETE FROM beneficiary_ration_rights WHERE beneficiary_id = ? AND ration_type_id = ?");
+                $insRights = $this->conn->prepare("INSERT INTO beneficiary_ration_rights (pae_id, beneficiary_id, ration_type_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE ration_type_id = ration_type_id");
+                $updMain = $this->conn->prepare("UPDATE {$this->table_name} SET ration_type_id = ?, ration_type = ? WHERE id = ? AND (ration_type_id = ? OR ration_type_id IS NULL)");
+
+                foreach ($beneficiaryIds as $bId) {
+                    $delRights->execute([$bId, $sourceId]);
+                    $insRights->execute([$pae_id, $bId, $targetId]);
+                    $updMain->execute([$targetId, $targetName, $bId, $sourceId]);
+                }
+            } elseif ($action === 'ASSIGN') {
+                $insRights = $this->conn->prepare("INSERT INTO beneficiary_ration_rights (pae_id, beneficiary_id, ration_type_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE ration_type_id = ration_type_id");
+                $updMain = $this->conn->prepare("UPDATE {$this->table_name} SET ration_type_id = ?, ration_type = ? WHERE id = ? AND (ration_type_id IS NULL OR ration_type_id = 0)");
+
+                foreach ($beneficiaryIds as $bId) {
+                    $insRights->execute([$pae_id, $bId, $targetId]);
+                    $updMain->execute([$targetId, $targetName, $bId]);
+                }
+            } elseif ($action === 'REMOVE') {
+                $delRights = $this->conn->prepare("DELETE FROM beneficiary_ration_rights WHERE beneficiary_id = ? AND ration_type_id = ?");
+                $findNext = $this->conn->prepare("SELECT brr.ration_type_id, prt.name 
+                                                  FROM beneficiary_ration_rights brr 
+                                                  JOIN pae_ration_types prt ON brr.ration_type_id = prt.id 
+                                                  WHERE brr.beneficiary_id = ? LIMIT 1");
+                $updNext = $this->conn->prepare("UPDATE {$this->table_name} SET ration_type_id = ?, ration_type = ? WHERE id = ?");
+
+                foreach ($affectedBeneficiaries as $bRow) {
+                    $bId = $bRow['id'];
+                    $delRights->execute([$bId, $targetId]);
+
+                    if ($bRow['ration_type_id'] == $targetId) {
+                        $findNext->execute([$bId]);
+                        $nextR = $findNext->fetch(PDO::FETCH_ASSOC);
+                        if ($nextR) {
+                            $updNext->execute([$nextR['ration_type_id'], $nextR['name'], $bId]);
+                        } else {
+                            $updNext->execute([null, null, $bId]);
+                        }
+                    }
+                }
+            }
+
+            $this->conn->commit();
+
+            $this->sendResponse([
+                "success" => true,
+                "affected_count" => $count,
+                "message" => "Operación completada exitosamente. Se actualizaron {$count} beneficiarios."
+            ]);
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            $this->sendError("Error al ejecutar el ajuste masivo: " . $e->getMessage(), 500);
+        }
+    }
 }
